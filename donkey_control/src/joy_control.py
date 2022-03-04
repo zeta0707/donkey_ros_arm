@@ -18,6 +18,8 @@ yaw_pulse = STEER_CENTER
 roll_pulse = STEER_CENTER
 roll_pulse1 = STEER_CENTER
 roll_pulse2 = STEER_CENTER
+pitch_pulse = STEER_CENTER
+gripper_pulse = STEER_CENTER - STEER_LIMIT
 
 class PCA9685:
     """
@@ -89,25 +91,44 @@ class RobotArm(object):
             queue_size=1,
             buff_size=2 ** 24,
         )
-
-        self.motor3.run(STEER_CENTER+20)            #right angle
-        self.motor4.run(STEER_CENTER+20)            #right angle
+        self.motor0.run(STEER_CENTER)
+        self.motor1.run(STEER_CENTER)
+        self.motor2.run(STEER_CENTER)
+        self.motor3.run(STEER_CENTER+20)             #right angle
+        self.motor4.run(STEER_CENTER+20)             #right angle
         self.motor5.run(STEER_CENTER-STEER_LIMIT)    #gripper open
         rospy.loginfo("Teleop Subscriber Awaked!! Waiting for joystick...")
+
+    def clamp(n, minn, maxn):
+        return max(min(maxn, n), minn)
 
     def joy_callback(self, msg):
         global yaw_pulse
         global roll_pulse  
         global roll_pulse1
         global roll_pulse2
+        global pitch_pulse
+        global gripper_pulse
 
-        yaw_pulse += (msg.drive.steering_angle)/1024
-        roll_pulse += (msg.drive.jerk)/1024
+        yaw_pulse += int((msg.drive.steering_angle)/1024)
+        roll_pulse += int((msg.drive.jerk)/1024)
+        pitch_pulse += int((msg.drive.speed)/1024)
+        gripper_pulse += int((msg.drive.acceleration)/1024)
+
+        if pitch_pulse > (STEER_CENTER + STEER_LIMIT) :
+           pitch_pulse = STEER_CENTER + STEER_LIMIT
+        elif pitch_pulse < (STEER_CENTER - STEER_LIMIT) :
+           pitch_pulse = STEER_CENTER - STEER_LIMIT
 
         if yaw_pulse > (STEER_CENTER + STEER_LIMIT) :
            yaw_pulse = STEER_CENTER + STEER_LIMIT
         elif yaw_pulse < (STEER_CENTER - STEER_LIMIT) :
            yaw_pulse = STEER_CENTER - STEER_LIMIT
+
+        if gripper_pulse > STEER_CENTER :
+           gripper_pulse = STEER_CENTER
+        elif gripper_pulse < (STEER_CENTER - STEER_LIMIT) :
+           gripper_pulse = STEER_CENTER - STEER_LIMIT
 
         if roll_pulse >  (STEER_CENTER + 2*STEER_LIMIT) :
             roll_pulse =  (STEER_CENTER + 2*STEER_LIMIT)
@@ -134,14 +155,18 @@ class RobotArm(object):
             + "motor1_pulse : "
             + str(roll_pulse1)
             + " / "
-            + "motor2_pulse : "
-            + str(roll_pulse2)
+            + "motor4_pulse : "
+            + str(pitch_pulse)  
+            + " / "
+            + "motor5_pulse : "
+            + str(gripper_pulse)        
         )
 
         self.motor0.run(yaw_pulse)      #control by joystick
         self.motor1.run(roll_pulse1)    #control by joystick
         self.motor2.run(roll_pulse2)    #control by joystick
-
+        self.motor4.run(pitch_pulse)    #control by joystick
+        self.motor5.run(gripper_pulse)    #control by joystick
 
 if __name__ == "__main__":
 

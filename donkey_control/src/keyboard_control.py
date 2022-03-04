@@ -18,6 +18,8 @@ yaw_pulse = STEER_CENTER
 roll_pulse = STEER_CENTER
 roll_pulse1 = STEER_CENTER
 roll_pulse2 = STEER_CENTER
+pitch_pulse = STEER_CENTER
+gripper_pulse = STEER_CENTER
 
 class PCA9685:
     """
@@ -88,9 +90,12 @@ class RobotArm(object):
             queue_size=1,
             buff_size=2 ** 24,
         )
-        self.motor3.run(STEER_CENTER+20)            #right angle
-        self.motor4.run(STEER_CENTER+20)            #right angle
-        self.motor5.run(STEER_CENTER-STEER_LIMIT)   #gripper open
+        self.motor0.run(STEER_CENTER)
+        self.motor1.run(STEER_CENTER)
+        self.motor2.run(STEER_CENTER)
+        self.motor3.run(STEER_CENTER+20)             #right angle
+        self.motor4.run(STEER_CENTER+20)             #right angle
+        self.motor5.run(STEER_CENTER-STEER_LIMIT)    #gripper open
 
         rospy.loginfo("Keyboard Subscriber Awaked!! Waiting for keyboard...")
 
@@ -99,6 +104,8 @@ class RobotArm(object):
         global roll_pulse  
         global roll_pulse1
         global roll_pulse2
+        global pitch_pulse
+        global gripper_pulse
 
         #rospy.loginfo("Received a /cmd_vel message!")
         rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
@@ -106,13 +113,30 @@ class RobotArm(object):
 
         # Do velocity processing here:
         # Use the kinematics of your robot to map linear and angular velocities into motor commands
-        roll_pulse += msg.linear.x
-        yaw_pulse -= msg.angular.z
+        
+        if msg.linear.x == 0.0:
+            yaw_pulse -= int(msg.angular.z)
+        elif msg.angular.z == 0.0:
+            roll_pulse += int(msg.linear.x*2.0)
+        else:
+            pitch_pulse += int(msg.linear.x*2.0)
+
+        gripper_pulse += int(msg.linear.z*2.0)
+
+        if pitch_pulse > (STEER_CENTER + STEER_LIMIT) :
+           pitch_pulse = STEER_CENTER + STEER_LIMIT
+        elif pitch_pulse < (STEER_CENTER - STEER_LIMIT) :
+           pitch_pulse = STEER_CENTER - STEER_LIMIT
 
         if yaw_pulse > (STEER_CENTER + STEER_LIMIT) :
            yaw_pulse = STEER_CENTER + STEER_LIMIT
         elif yaw_pulse < (STEER_CENTER - STEER_LIMIT) :
            yaw_pulse = STEER_CENTER - STEER_LIMIT
+
+        if gripper_pulse > (STEER_CENTER) :
+           gripper_pulse = STEER_CENTER
+        elif gripper_pulse < (STEER_CENTER - STEER_LIMIT) :
+           gripper_pulse = STEER_CENTER - STEER_LIMIT
 
         if roll_pulse >  (STEER_CENTER + 2*STEER_LIMIT) :
             roll_pulse =  (STEER_CENTER + 2*STEER_LIMIT)
@@ -139,13 +163,18 @@ class RobotArm(object):
             + "motor1_pulse : "
             + str(roll_pulse1)
             + " / "
-            + "motor2_pulse : "
-            + str(roll_pulse2)
+            + "motor4_pulse : "
+            + str(pitch_pulse)  
+            + " / "
+            + "motor5_pulse : "
+            + str(gripper_pulse)        
         )
 
-        self.motor0.run(yaw_pulse)      #control by keyboard
-        self.motor1.run(roll_pulse1)    #control by keyboard
-        self.motor2.run(roll_pulse2)    #control by keyboard
+        self.motor0.run(yaw_pulse)      #control by joystick
+        self.motor1.run(roll_pulse1)    #control by joystick
+        self.motor2.run(roll_pulse2)    #control by joystick
+        self.motor4.run(pitch_pulse)    #control by joystick
+        self.motor5.run(gripper_pulse)  #control by joystick
 
 
 if __name__ == "__main__":
