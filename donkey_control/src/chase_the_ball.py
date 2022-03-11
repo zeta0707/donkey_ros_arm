@@ -17,18 +17,10 @@ import rospy
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Point
 
-K_LAT_DIST_TO_STEER = -2.5
-K_LAT_DIST_TO_THROTTLE = 0.2
-#steering sensitivity parameter
+K_LAT_DIST_TO_STEER = -1.0
 
-def saturate(value, min, max):
-    if value <= min:
-        return min
-    elif value >= max:
-        return max
-    else:
-        return value
-
+import myconfig as mc
+import myutil as mu
 
 class ChaseBall:
     def __init__(self):
@@ -61,22 +53,17 @@ class ChaseBall:
     def get_control_action(self):
         """
         Based on the current ranges, calculate the command
-
-        Steer will be added to the commanded throttle
-        throttle will be multiplied by the commanded throttle
         """
         steer_action = 0.0
-        throttle_action = 0.0
+        tilt_action = 0.0
 
         if self.is_detected:
             # --- Apply steering, proportional to how close is the object
-            steer_action = -K_LAT_DIST_TO_STEER * self.blob_x
-            steer_action = saturate(steer_action, -1.5, 1.5)
+            steer_action = K_LAT_DIST_TO_STEER * self.blob_x
+            tilt_action = 1.0
             rospy.loginfo("Steering command %.2f" % steer_action)
             #if object is detected, go forward with defined power
-	    throttle_action = K_LAT_DIST_TO_THROTTLE
-
-        return (steer_action, throttle_action)
+        return (steer_action, tilt_action)
 
     def run(self):
 
@@ -85,23 +72,21 @@ class ChaseBall:
 
         while not rospy.is_shutdown():
             # -- Get the control action
-            steer_action, throttle_action = self.get_control_action()
-
-            rospy.loginfo("Steering = %.2f, Throttle = %.2f", steer_action, throttle_action)
-
+            steer_action, tilt_action = self.get_control_action()
+            
             # -- update the message
-            self._message.linear.x = throttle_action
+            self._message.linear.x = tilt_action
             self._message.angular.z = steer_action
 
-            # -- publish it
-            self.pub_twist.publish(self._message)
+            # -- publish it, only blob detected
+            if self.is_detected:
+                rospy.loginfo("Steering = %.2f, tilt = %.2f", steer_action, tilt_action)
+                self.pub_twist.publish(self._message)
 
             rate.sleep()
 
 
 if __name__ == "__main__":
-
     rospy.init_node("chase_ball")
-
     chase_ball = ChaseBall()
     chase_ball.run()

@@ -23,7 +23,6 @@ PUBLISHES TO:
 
 """
 
-
 #--- Allow relative importing
 if __name__ == '__main__' and __package__ is None:
     from os import sys, path
@@ -39,7 +38,6 @@ from sensor_msgs.msg        import Image
 from geometry_msgs.msg      import Point
 from cv_bridge              import CvBridge, CvBridgeError
 from include.blob_detector  import *
-
 
 class BlobDetector:
 
@@ -61,12 +59,10 @@ class BlobDetector:
         self.blob_pub  = rospy.Publisher("/blob/point_blob",Point,queue_size=1)
 
         self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber("/csi_image",Image,self.callback)
-        print ("<< Subscribed to topic /csi_image")
-
-        # TODO: switch btw webcam/csi by launch file
-        # self.image_sub = rospy.Subscriber("/webcam_image",Image,self.callback)
-        # print ("<< Subscribed to topic /webcam_image")
+        #self.image_sub = rospy.Subscriber("/csi_image",Image,self.callback)
+        #print ("<< Subscribed to topic /csi_image")
+        self.image_sub = rospy.Subscriber("/webcam_image",Image,self.callback)
+        print ("<< Subscribed to topic /webcam_image")
         
     def set_threshold(self, thr_min, thr_max):
         self._threshold = [thr_min, thr_max]
@@ -91,10 +87,8 @@ class BlobDetector:
                                             blob_params=self._blob_params, search_window=self.detection_window )
             #--- Draw search window and blobs
             cv_image    = blur_outside(cv_image, 10, self.detection_window)
-
             cv_image    = draw_window(cv_image, self.detection_window, line=1)
-            cv_image    = draw_frame(cv_image)
-            
+            cv_image    = draw_frame(cv_image)            
             cv_image    = draw_keypoints(cv_image, keypoints) 
             
             try:
@@ -133,8 +127,7 @@ def main(args):
     # white, light blue filter   
     white_min = (16, 0, 66)
     white_max = (133, 251, 255)
-    # lblue_min = (59, 45, 112)
-    # lbue_max = (100, 255, 255)   
+
     pink_min = (135, 41, 95)
     pink_max = (255, 196, 255)
 
