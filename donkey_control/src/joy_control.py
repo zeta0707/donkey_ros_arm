@@ -14,16 +14,14 @@ from ackermann_msgs.msg import AckermannDriveStamped
 import myconfig as mc
 import myutil as mu
 
-STEER_CENTER=380
-STEER_LIMIT=110
+yaw_pulse = mc.MOTOR0_HOME
+pitch_pulse = mc.MOTOR4_HOME
+gripper_pulse = mc.GRIPPER_OPEN    
 
-yaw_pulse = mc.MOTOR0_ZERO
-pitch_pulse = mc.MOTOR4_ZERO
-gripper_pulse = mc.GRIPPER_OPEN      
-
-roll_pulse = STEER_CENTER
-roll_pulse1 = STEER_CENTER
-roll_pulse2 = STEER_CENTER
+roll_pulse = 0
+roll_pulse1 = mc.MOTOR1_HOME
+roll_pulse2 = mc.MOTOR2_HOME
+roll_pulse3 = mc.MOTOR3_HOME
 
 class RobotArm(object):
     def __init__(self, name="donkey_arm"):
@@ -44,12 +42,20 @@ class RobotArm(object):
             queue_size=1,
             buff_size=2 ** 24,
         )
-        self.motor0.run(mc.MOTOR0_ZERO)
-        self.motor1.run(mc.MOTOR1_ZERO)
-        self.motor2.run(mc.MOTOR2_ZERO)
-        self.motor3.run(mc.MOTOR3_ZERO)           
-        self.motor4.run(mc.MOTOR4_ZERO)  
-        self.motor5.run(mc.GRIPPER_OPEN)  
+        self.pulse_rem = 0
+
+        self.motor2.run(mc.MOTOR2_HOME)
+        time.sleep(1)
+        self.motor3.run(mc.MOTOR3_HOME)      
+        time.sleep(1)     
+        self.motor4.run(mc.MOTOR4_HOME)  
+        time.sleep(1)
+        self.motor5.run(mc.GRIPPER_OPEN) 
+        time.sleep(1) 
+        self.motor0.run(mc.MOTOR0_HOME)
+        time.sleep(1)
+        self.motor1.run(mc.MOTOR1_HOME)
+
         rospy.loginfo("Teleop Subscriber Awaked!! Waiting for joystick...")
 
     def joy_callback(self, msg):
@@ -57,27 +63,30 @@ class RobotArm(object):
         global roll_pulse  
         global roll_pulse1
         global roll_pulse2
+        global roll_pulse3
         global pitch_pulse
         global gripper_pulse
 
+        self.pulse_rem = 0
+
         yaw_pulse += int((msg.drive.steering_angle)/2048)
-        roll_pulse += int((msg.drive.jerk)/2048)
-        pitch_pulse += int((msg.drive.speed)/2048)
-        gripper_pulse += int((msg.drive.acceleration)/2048)
+        pitch_pulse += int((msg.drive.speed)/1024)
+        gripper_pulse += int((msg.drive.acceleration)/1024)
 
         yaw_pulse = mu.clamp(yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
         pitch_pulse = mu.clamp(pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
         gripper_pulse = mu.clamp(gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
 
-        if roll_pulse >  (STEER_CENTER + STEER_LIMIT) :
-            roll_pulse1 = STEER_CENTER + STEER_LIMIT
-            roll_pulse2 = STEER_CENTER + roll_pulse - roll_pulse1
-        elif roll_pulse <  (STEER_CENTER - STEER_LIMIT) :
-            roll_pulse1 = STEER_CENTER - STEER_LIMIT
-            roll_pulse2 = STEER_CENTER + roll_pulse - roll_pulse1
-        else :
-            roll_pulse1 = roll_pulse
-            roll_pulse2 =  STEER_CENTER
+        roll_pulse += int((msg.drive.jerk)/2048)
+        roll_pulse = mu.clamp(roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
+
+        self.pulse_rem, roll_pulse3 = mu.clampRem(roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
+        self.pulse_rem, roll_pulse2 = mu.clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
+        self.pulse_rem, roll_pulse1 = mu.clampRem(self.pulse_rem, mc.MOTOR1_DIF_MIN, mc.MOTOR1_DIF_MAX)
+
+        roll_pulse3 += mc.MOTOR3_HOME
+        roll_pulse2 += mc.MOTOR2_HOME
+        roll_pulse1 += mc.MOTOR1_HOME
 
         print(
             "motor0_pulse : "
@@ -89,18 +98,19 @@ class RobotArm(object):
             + "motor1_pulse : "
             + str(roll_pulse1)
             + " / "
-            + "motor4_pulse : "
-            + str(pitch_pulse)  
+            + "motor2_pulse : "
+            + str(roll_pulse2)  
             + " / "
-            + "motor5_pulse : "
-            + str(gripper_pulse)        
+            + "motor3_pulse : "
+            + str(roll_pulse3)        
         )
 
-        self.motor0.run(yaw_pulse)      #control by joystick
-        self.motor1.run(roll_pulse1)    #control by joystick
-        self.motor2.run(roll_pulse2)    #control by joystick
-        self.motor4.run(pitch_pulse)    #control by joystick
-        self.motor5.run(gripper_pulse)    #control by joystick
+        self.motor0.run(yaw_pulse)       #control by joystick
+        self.motor1.run(roll_pulse1)     #control by joystick
+        self.motor2.run(roll_pulse2)     #control by joystick
+        self.motor3.run(roll_pulse3)     #control by joystick
+        self.motor4.run(pitch_pulse)     #control by joystick
+        self.motor5.run(gripper_pulse)   #control by joystick
 
 if __name__ == "__main__":
 

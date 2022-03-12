@@ -8,6 +8,16 @@ def clamp(n, minn, maxn):
     else:
         return n
 
+def clampRem(n, minn, maxn):
+    if n < minn:
+        #print(n, minn)
+        return (n - minn) , minn
+    elif n > maxn:
+        #print(n, maxn)
+        return (n - maxn), maxn
+    else:
+        return 0, n
+
 class PCA9685:
     """
     PWM motor controler using PCA9685 boards.

@@ -14,16 +14,14 @@ from geometry_msgs.msg import Twist
 import myconfig as mc
 import myutil as mu
 
-STEER_CENTER=380
-STEER_LIMIT=110
+yaw_pulse = mc.MOTOR0_HOME
+pitch_pulse = mc.MOTOR4_HOME
+gripper_pulse = mc.GRIPPER_OPEN    
 
-yaw_pulse = mc.MOTOR0_ZERO
-pitch_pulse = mc.MOTOR4_ZERO
-gripper_pulse = mc.GRIPPER_OPEN      
-
-roll_pulse = STEER_CENTER
-roll_pulse1 = STEER_CENTER
-roll_pulse2 = STEER_CENTER
+roll_pulse = 0
+roll_pulse1 = mc.MOTOR1_HOME
+roll_pulse2 = mc.MOTOR2_HOME
+roll_pulse3 = mc.MOTOR3_HOME
 
 class RobotArm(object):
     def __init__(self, name="donkey_arm"):
@@ -61,6 +59,8 @@ class RobotArm(object):
         global pitch_pulse
         global gripper_pulse
 
+        self.pulse_rem = 0
+
         #rospy.loginfo("Received a /cmd_vel message!")
         rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
         rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
@@ -80,16 +80,13 @@ class RobotArm(object):
         pitch_pulse = mu.clamp(pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
         gripper_pulse = mu.clamp(gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
 
-        roll_pulse = mu.clamp(roll_pulse, STEER_CENTER-2*STEER_LIMIT, STEER_CENTER+2*STEER_LIMIT)
-        if roll_pulse >  (STEER_CENTER + STEER_LIMIT) :
-            roll_pulse1 = STEER_CENTER + STEER_LIMIT
-            roll_pulse2 = STEER_CENTER + roll_pulse - roll_pulse1
-        elif roll_pulse <  (STEER_CENTER - STEER_LIMIT) :
-            roll_pulse1 = STEER_CENTER - STEER_LIMIT
-            roll_pulse2 = STEER_CENTER + roll_pulse - roll_pulse1
-        else :
-            roll_pulse1 = roll_pulse
-            roll_pulse2 =  STEER_CENTER
+        self.pulse_rem, roll_pulse3 = mu.clampRem(roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
+        self.pulse_rem, roll_pulse2 = mu.clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
+        self.pulse_rem, roll_pulse1 = mu.clampRem(self.pulse_rem, mc.MOTOR1_DIF_MIN, mc.MOTOR1_DIF_MAX)
+
+        roll_pulse3 += mc.MOTOR3_HOME
+        roll_pulse2 += mc.MOTOR2_HOME
+        roll_pulse1 += mc.MOTOR1_HOME
 
         print(
             "motor0_pulse : "
@@ -101,19 +98,19 @@ class RobotArm(object):
             + "motor1_pulse : "
             + str(roll_pulse1)
             + " / "
-            + "motor4_pulse : "
-            + str(pitch_pulse)  
+            + "motor2_pulse : "
+            + str(roll_pulse2)  
             + " / "
-            + "motor5_pulse : "
-            + str(gripper_pulse)        
+            + "motor3_pulse : "
+            + str(roll_pulse3)        
         )
 
-        self.motor0.run(yaw_pulse)      #control by joystick
-        self.motor1.run(roll_pulse1)    #control by joystick
-        self.motor2.run(roll_pulse2)    #control by joystick
-        self.motor4.run(pitch_pulse)    #control by joystick
-        self.motor5.run(gripper_pulse)  #control by joystick
-
+        self.motor0.run(yaw_pulse)       #control by joystick
+        self.motor1.run(roll_pulse1)     #control by joystick
+        self.motor2.run(roll_pulse2)     #control by joystick
+        self.motor3.run(roll_pulse3)     #control by joystick
+        self.motor4.run(pitch_pulse)     #control by joystick
+        self.motor5.run(gripper_pulse)    #control by joystick
 
 if __name__ == "__main__":
 
