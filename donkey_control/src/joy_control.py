@@ -6,22 +6,13 @@ referenced from donekycar
 url : https://github.com/autorope/donkeycar/blob/dev/donkeycar/parts/actuator.py
 """
 
-import time
+from time import time
 import rospy
 from threading import Thread
 from ackermann_msgs.msg import AckermannDriveStamped
 
 import myconfig as mc
 import myutil as mu
-
-yaw_pulse = mc.MOTOR0_HOME
-pitch_pulse = mc.MOTOR4_HOME
-gripper_pulse = mc.GRIPPER_OPEN    
-
-roll_pulse = 0
-roll_pulse1 = mc.MOTOR1_HOME
-roll_pulse2 = mc.MOTOR2_HOME
-roll_pulse3 = mc.MOTOR3_HOME
 
 class RobotArm(object):
     def __init__(self, name="donkey_arm"):
@@ -42,8 +33,11 @@ class RobotArm(object):
             queue_size=1,
             buff_size=2 ** 24,
         )
-        self.pulse_rem = 0
+        rospy.loginfo("Teleop Subscriber Awaked!! Waiting for joystick...")
 
+        self.done_home = 0
+
+        # start from off position
         self.motor2.run(mc.MOTOR2_HOME)
         time.sleep(1)
         self.motor3.run(mc.MOTOR3_HOME)      
@@ -54,63 +48,89 @@ class RobotArm(object):
         time.sleep(1) 
         self.motor0.run(mc.MOTOR0_HOME)
         time.sleep(1)
-        self.motor1.run(mc.MOTOR1_HOME)
+        self.motor1.run(mc.MOTOR1_HOME) 
 
-        rospy.loginfo("Teleop Subscriber Awaked!! Waiting for joystick...")
+        # move to home positon from off
+        #self.motor0.runTarget(mc.MOTOR0_OFF, mc.MOTOR0_HOME) 
+        #self.motor1.runTarget(mc.MOTOR1_OFF, mc.MOTOR1_HOME)
+        #self.motor2.runTarget(mc.MOTOR2_OFF, mc.MOTOR2_HOME)
+        #self.motor3.runTarget(mc.MOTOR3_OFF, mc.MOTOR3_HOME)    
+        #self.motor4.runTarget(mc.MOTOR4_OFF, mc.MOTOR4_HOME)  
+        #self.motor5.runTarget(mc.GRIPPER_OFF, mc.GRIPPER_HOME) 
 
-    def joy_callback(self, msg):
-        global yaw_pulse
-        global roll_pulse  
-        global roll_pulse1
-        global roll_pulse2
-        global roll_pulse3
-        global pitch_pulse
-        global gripper_pulse
+        self.pulse_rem = 0
+        self.done_home = 1
+        self.fhandle = open("automove.txt", 'w')
+
+        self.yaw_pulse = mc.MOTOR0_HOME
+        self.pitch_pulse = mc.MOTOR4_HOME
+        self.gripper_pulse = mc.GRIPPER_HOME 
+        self.roll_pulse = 0
+        self.roll_pulse1 = mc.MOTOR1_HOME
+        self.roll_pulse2 = mc.MOTOR2_HOME
+        self.roll_pulse3 = mc.MOTOR3_HOME 
+
+    def __del__(self):
+        print("Arm class release")
+        self.fhandle.close
+        
+    def joy_callback(self, msg):        
+        if  self.done_home == 0:
+            return
+        else:
+            if self.done_home == 1:                
+                self.done_home = 2
+                self.prev_time = time()
 
         self.pulse_rem = 0
 
-        yaw_pulse += int((msg.drive.steering_angle)/2048)
-        pitch_pulse += int((msg.drive.speed)/1024)
-        gripper_pulse += int((msg.drive.acceleration)/1024)
+        self.yaw_pulse += int((msg.drive.steering_angle)/2048)
+        self.pitch_pulse += int((msg.drive.speed)/2048)
+        self.gripper_pulse += int((msg.drive.acceleration)/2048)
 
-        yaw_pulse = mu.clamp(yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
-        pitch_pulse = mu.clamp(pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
-        gripper_pulse = mu.clamp(gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
+        self.yaw_pulse = mu.clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
+        self.pitch_pulse = mu.clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
+        self.gripper_pulse = mu.clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
 
-        roll_pulse += int((msg.drive.jerk)/2048)
-        roll_pulse = mu.clamp(roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
+        self.roll_pulse += int((msg.drive.jerk)/2048)
+        self.roll_pulse = mu.clamp(self.roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
 
-        self.pulse_rem, roll_pulse3 = mu.clampRem(roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
-        self.pulse_rem, roll_pulse2 = mu.clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
-        self.pulse_rem, roll_pulse1 = mu.clampRem(self.pulse_rem, mc.MOTOR1_DIF_MIN, mc.MOTOR1_DIF_MAX)
+        self.pulse_rem, self.roll_pulse3 = mu.clampRem(self.roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
+        self.pulse_rem, self.roll_pulse2 = mu.clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
+        self.pulse_rem, self.roll_pulse1 = mu.clampRem(self.pulse_rem, mc.MOTOR1_DIF_MIN, mc.MOTOR1_DIF_MAX)
 
-        roll_pulse3 += mc.MOTOR3_HOME
-        roll_pulse2 += mc.MOTOR2_HOME
-        roll_pulse1 += mc.MOTOR1_HOME
+        self.roll_pulse3 += mc.MOTOR3_HOME
+        self.roll_pulse2 += mc.MOTOR2_HOME
+        self.roll_pulse1 += mc.MOTOR1_HOME
 
         print(
             "motor0_pulse : "
-            + str(yaw_pulse)
+            + str(self.yaw_pulse)
             + " / "
             + "roll_pulse : "
-            + str(roll_pulse)
+            + str(self.roll_pulse)
             + " / "
             + "motor1_pulse : "
-            + str(roll_pulse1)
+            + str(self.roll_pulse1)
             + " / "
             + "motor2_pulse : "
-            + str(roll_pulse2)  
+            + str(self.roll_pulse2)  
             + " / "
             + "motor3_pulse : "
-            + str(roll_pulse3)        
+            + str(self.roll_pulse3)        
         )
 
-        self.motor0.run(yaw_pulse)       #control by joystick
-        self.motor1.run(roll_pulse1)     #control by joystick
-        self.motor2.run(roll_pulse2)     #control by joystick
-        self.motor3.run(roll_pulse3)     #control by joystick
-        self.motor4.run(pitch_pulse)     #control by joystick
-        self.motor5.run(gripper_pulse)   #control by joystick
+        self.motor0.run(self.yaw_pulse)       #control by joystick
+        self.motor1.run(self.roll_pulse1)     #control by joystick
+        self.motor2.run(self.roll_pulse2)     #control by joystick
+        self.motor3.run(self.roll_pulse3)     #control by joystick
+        self.motor4.run(self.pitch_pulse)     #control by joystick
+        self.motor5.run(self.gripper_pulse)   #control by joystick
+        
+        self.timediff = time() - self.prev_time
+        self.prev_time = time()
+        self.fhandle.write(str(self.yaw_pulse) + ':' + str(self.roll_pulse1) + ':' + str(self.roll_pulse2) 
+        + ':' + str(self.roll_pulse3) + ':' + str(self.pitch_pulse) + ':' + str(self.gripper_pulse) + ':' + str(self.timediff) + '\n')
 
 if __name__ == "__main__":
 
@@ -120,3 +140,4 @@ if __name__ == "__main__":
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         rate.sleep()
+    myArm.__del__()

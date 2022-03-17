@@ -20,9 +20,13 @@ servo_max = 490  # Max pulse length out of 4096
 
 # Set frequency to 60hz, good for servos.
 pwm.set_pwm_freq(60)
-channel = int(input('Channel 0~15: '))
+channel = 0
 
 while 1:
+    user_input = raw_input('Channel 0~15: ')
+    if user_input:
+        channel = int(user_input)
+        
     pulse = raw_input("Insert position:")
     if pulse=="A":
         for i in range(servo_min,servo_max):
