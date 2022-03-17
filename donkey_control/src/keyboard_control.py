@@ -6,7 +6,7 @@ referenced from donekycar
 url : https://github.com/autorope/donkeycar/blob/dev/donkeycar/parts/actuator.py
 """
 
-from time import time
+from time import time, sleep
 import rospy
 from threading import Thread
 from geometry_msgs.msg import Twist
@@ -38,15 +38,15 @@ class RobotArm(object):
 
         # start from off position
         self.motor2.run(mc.MOTOR2_HOME)
-        time.sleep(1)
+        #sleep(1) 
         self.motor3.run(mc.MOTOR3_HOME)      
-        time.sleep(1)     
+        #sleep(1)     
         self.motor4.run(mc.MOTOR4_HOME)  
-        time.sleep(1)
+        #sleep(1) 
         self.motor5.run(mc.GRIPPER_OPEN) 
-        time.sleep(1) 
+        #sleep(1) 
         self.motor0.run(mc.MOTOR0_HOME)
-        time.sleep(1)
+        #sleep(1) 
         self.motor1.run(mc.MOTOR1_HOME) 
 
         # move to home positon from off
@@ -87,16 +87,16 @@ class RobotArm(object):
         # Use the kinematics of your robot to map linear and angular velocities into motor commands
         
         if msg.linear.x == 0.0:
-            self.yaw_pulse -= int(msg.angular.z)
+            self.yaw_pulse -= int(msg.angular.z*3.0)
         elif msg.angular.z == 0.0:
-            self.roll_pulse += int(msg.linear.x*2.0)
+            self.roll_pulse += int(msg.linear.x*3.0)
         else:
-            self.pitch_pulse += int(msg.linear.x*2.0)
-        self.gripper_pulse += int(msg.linear.z*2.0)
+            self.pitch_pulse += int(msg.linear.x*10.0)
+        self.gripper_pulse += int(msg.linear.z*10.0)
 
         #rospy.loginfo("Received a /cmd_vel message!")
-        rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
-        rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
+        #rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
+        #rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
 
         self.yaw_pulse = mu.clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
         self.pitch_pulse = mu.clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)

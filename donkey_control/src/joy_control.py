@@ -6,7 +6,7 @@ referenced from donekycar
 url : https://github.com/autorope/donkeycar/blob/dev/donkeycar/parts/actuator.py
 """
 
-from time import time
+from time import time, sleep
 import rospy
 from threading import Thread
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -39,15 +39,15 @@ class RobotArm(object):
 
         # start from off position
         self.motor2.run(mc.MOTOR2_HOME)
-        time.sleep(1)
+        #sleep(1)
         self.motor3.run(mc.MOTOR3_HOME)      
-        time.sleep(1)     
+        #sleep(1)     
         self.motor4.run(mc.MOTOR4_HOME)  
-        time.sleep(1)
+        #sleep(1) 
         self.motor5.run(mc.GRIPPER_OPEN) 
-        time.sleep(1) 
+        #sleep(1) 
         self.motor0.run(mc.MOTOR0_HOME)
-        time.sleep(1)
+        #sleep(1) 
         self.motor1.run(mc.MOTOR1_HOME) 
 
         # move to home positon from off
@@ -84,15 +84,15 @@ class RobotArm(object):
 
         self.pulse_rem = 0
 
-        self.yaw_pulse += int((msg.drive.steering_angle)/2048)
-        self.pitch_pulse += int((msg.drive.speed)/2048)
-        self.gripper_pulse += int((msg.drive.acceleration)/2048)
+        self.yaw_pulse += int((msg.drive.steering_angle)/1024)
+        self.pitch_pulse += int((msg.drive.speed)/256)
+        self.gripper_pulse += int((msg.drive.acceleration)/256)
 
         self.yaw_pulse = mu.clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
         self.pitch_pulse = mu.clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
         self.gripper_pulse = mu.clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
 
-        self.roll_pulse += int((msg.drive.jerk)/2048)
+        self.roll_pulse += int((msg.drive.jerk)/1024)
         self.roll_pulse = mu.clamp(self.roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
 
         self.pulse_rem, self.roll_pulse3 = mu.clampRem(self.roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
