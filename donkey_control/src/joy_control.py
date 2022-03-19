@@ -67,6 +67,7 @@ class RobotArm(object):
     def __del__(self):
         print("Arm class release")
         self.motor5.run(mc.GRIPPER_OFF) 
+        self.motor4.run(mc.MOTOR4_OFF) 
         self.motor0.run(mc.MOTOR0_OFF)
         self.motor0.set_pwm_clear()
         self.fhandle.close

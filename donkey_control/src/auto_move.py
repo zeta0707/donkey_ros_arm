@@ -1,5 +1,7 @@
 #!/usr/bin/python
 from time import sleep, time
+import myconfig as mc
+import myutil as mu
 
 # Import the PCA9685 module.
 import Adafruit_PCA9685
@@ -19,6 +21,13 @@ pwm.set_pwm_freq(60)
 file1 = open('automove.txt', 'r')
 # Using readline() 
 
+pwm.set_pwm(0, 1,  mc.MOTOR1_HOME)       
+pwm.set_pwm(0, 2,  mc.MOTOR2_HOME)  
+pwm.set_pwm(0, 3,  mc.MOTOR3_HOME) 
+pwm.set_pwm(0, 14, mc.MOTOR4_HOME)
+pwm.set_pwm(0, 15, mc.GRIPPER_HOME)
+pwm.set_pwm(0, 0,  mc.MOTOR0_HOME) 
+
 while True:
     # Get next line from file
     line = file1.readline()
@@ -36,3 +45,7 @@ while True:
     sleep(float(time_diff))
 
 file1.close()
+pwm.set_pwm(0, 14, mc.MOTOR4_OFF)
+pwm.set_pwm(0, 15, mc.GRIPPER_OFF)
+pwm.set_pwm(0, 0,  mc.MOTOR0_OFF) 
+pwm.set_all_pwm(0,0)
