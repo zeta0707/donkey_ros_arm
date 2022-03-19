@@ -34,29 +34,23 @@ class RobotArm(object):
             buff_size=2 ** 24,
         )
         rospy.loginfo("Teleop Subscriber Awaked!! Waiting for joystick...")
-
         self.done_home = 0
 
         # start from off position
-        self.motor2.run(mc.MOTOR2_HOME)
-        #sleep(1)
-        self.motor3.run(mc.MOTOR3_HOME)      
-        #sleep(1)     
-        self.motor4.run(mc.MOTOR4_HOME)  
-        #sleep(1) 
-        self.motor5.run(mc.GRIPPER_OPEN) 
-        #sleep(1) 
-        self.motor0.run(mc.MOTOR0_HOME)
-        #sleep(1) 
-        self.motor1.run(mc.MOTOR1_HOME) 
+        self.motor2.run(mc.MOTOR2_OFF)
+        self.motor3.run(mc.MOTOR3_OFF)       
+        self.motor4.run(mc.MOTOR4_OFF)  
+        self.motor1.run(mc.MOTOR1_OFF) 
+        self.motor5.run(mc.GRIPPER_OFF) 
+        self.motor0.run(mc.MOTOR0_OFF)
 
         # move to home positon from off
-        #self.motor0.runTarget(mc.MOTOR0_OFF, mc.MOTOR0_HOME) 
-        #self.motor1.runTarget(mc.MOTOR1_OFF, mc.MOTOR1_HOME)
-        #self.motor2.runTarget(mc.MOTOR2_OFF, mc.MOTOR2_HOME)
-        #self.motor3.runTarget(mc.MOTOR3_OFF, mc.MOTOR3_HOME)    
-        #self.motor4.runTarget(mc.MOTOR4_OFF, mc.MOTOR4_HOME)  
-        #self.motor5.runTarget(mc.GRIPPER_OFF, mc.GRIPPER_HOME) 
+        self.motor1.runTarget(mc.MOTOR1_OFF, mc.MOTOR1_HOME)
+        self.motor2.runTarget(mc.MOTOR2_OFF, mc.MOTOR2_HOME)
+        self.motor3.runTarget(mc.MOTOR3_OFF, mc.MOTOR3_HOME)    
+        self.motor4.runTarget(mc.MOTOR4_OFF, mc.MOTOR4_HOME)  
+        self.motor5.runTarget(mc.GRIPPER_OFF, mc.GRIPPER_HOME) 
+        self.motor0.runTarget(mc.MOTOR0_OFF, mc.MOTOR0_HOME)        
 
         self.pulse_rem = 0
         self.done_home = 1
@@ -72,6 +66,9 @@ class RobotArm(object):
 
     def __del__(self):
         print("Arm class release")
+        self.motor5.run(mc.GRIPPER_OFF) 
+        self.motor0.run(mc.MOTOR0_OFF)
+        self.motor0.set_pwm_clear()
         self.fhandle.close
         
     def joy_callback(self, msg):        
