@@ -18,16 +18,25 @@ pwm = Adafruit_PCA9685.PCA9685()
 pwm.set_pwm_freq(60)
 channel = 0
 
-while 1:
-    user_input = raw_input('Channel 0~15: ')
+
+while True:
+    try:
+        user_input = raw_input('Channel 0~15: ')
+    except KeyboardInterrupt:
+       break
+    except:
+       continue        
     if user_input:
         channel = int(user_input)
-        
-    pulse = raw_input("Insert position or q:")
-    if pulse=="q":
-        break
-    else:
-        i=int(pulse)
-        pwm.set_pwm(channel,0,i)
+    
+    try:
+        pulse = raw_input("Insert position:")
+    except KeyboardInterrupt:
+       break
+    except:
+       continue
+    i=int(pulse)
+    pwm.set_pwm(channel,0,i)
 
+print("servo test done,release pca9685")
 pwm.set_all_pwm(0,0)

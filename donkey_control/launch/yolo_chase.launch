@@ -1,4 +1,5 @@
 <launch>
+  <node pkg="csi_camera" type="webcam_pub.py" name="webcam_pub" />
   <node pkg="donkey_control" type="chase_object_yolo.py" name="chase_object" />
   <node pkg="donkey_control" type="blob_chase.py" name="blob_chase" />
 </launch>

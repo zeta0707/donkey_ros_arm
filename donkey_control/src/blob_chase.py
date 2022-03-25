@@ -19,15 +19,8 @@ import time
 import myconfig as mc
 import myutil as mu
 
-STEER_CENTER=380
-STEER_LIMIT=110
-
-yaw_pulse = mc.MOTOR0_ZERO
-pitch_pulse = mc.MOTOR4_ZERO
-gripper_pulse = mc.GRIPPER_OPEN   
-
 class ServoConvert:
-    def __init__(self, id=1, center_value=STEER_CENTER, range=STEER_LIMIT*2, direction=1):
+    def __init__(self, id=1, center_value=mc.MOTOR0_HOME, range=mc.MOTOR0_RANGE, direction=1):
         self.value = 0.0
         self.value_out = center_value
         self._center = center_value
@@ -57,27 +50,30 @@ class RobotArm:
         self.motor3 = mu.PCA9685(channel=3, address=0x40, busnum=1)
         self.motor4 = mu.PCA9685(channel=14, address=0x40, busnum=1)
         self.motor5 = mu.PCA9685(channel=15, address=0x40, busnum=1)
-        #not implemement, so run fake motor
-        self._tilt = mu.PCA9685(channel=8, address=0x40, busnum=1)
+
         rospy.loginfo("PCA9685 Awaked!!")
 
-        self._steering.run(mc.MOTOR0_ZERO)
-        self.motor1.run(mc.MOTOR1_ZERO)
-        self.motor2.run(mc.MOTOR2_ZERO)
-        self.motor3.run(mc.MOTOR3_ZERO)           
-        self.motor4.run(mc.MOTOR4_ZERO)  
-        self.motor5.run(mc.GRIPPER_OPEN)  
+        # start from off position
+        self.motor2.run(mc.MOTOR2_OFF)
+        self.motor3.run(mc.MOTOR3_OFF)       
+        self.motor4.run(mc.MOTOR4_OFF)  
+        self.motor1.run(mc.MOTOR1_OFF) 
+        self.motor5.run(mc.GRIPPER_OFF) 
+        self._steering.run(mc.MOTOR0_OFF)
+
+        # move to home positon from off
+        self.motor1.runTarget(mc.MOTOR1_OFF, mc.MOTOR1_HOME)
+        self.motor2.runTarget(mc.MOTOR2_OFF, mc.MOTOR2_HOME)
+        self.motor3.runTarget(mc.MOTOR3_OFF, mc.MOTOR3_HOME)    
+        self.motor4.runTarget(mc.MOTOR4_OFF, mc.MOTOR4_HOME)  
+        self.motor5.runTarget(mc.GRIPPER_OFF, mc.GRIPPER_HOME) 
+        self._steering.runTarget(mc.MOTOR0_OFF, mc.MOTOR0_HOME)        
 
         self.actuators = {}
         self.actuators["steering"] = ServoConvert(
-            id=1, center_value=STEER_CENTER, range=STEER_LIMIT*2, direction=1
+            id=1, center_value=mc.MOTOR0_HOME, range=mc.MOTOR0_RANGE, direction=1
         )
         rospy.loginfo("> steering corrrectly initialized")
- 
-        self.actuators["tilt"] = ServoConvert(
-            id=2, center_value=STEER_CENTER, range=STEER_LIMIT*2, direction=1
-        )  # -- positive left
-        rospy.loginfo("> tilt corrrectly initialized")
 
         # --- Create the Subscriber to Twist commands
         #self.ros_sub_twist = rospy.Subscriber(
@@ -85,16 +81,18 @@ class RobotArm:
         #)
         #rospy.loginfo("> Subscriber corrrectly initialized")
 
-        # --- Create the Subscriber to obstacle_avoidance commands
+        # --- Create the Subscriber to object following
         self.ros_sub_twist = rospy.Subscriber(
             "/dkcar/control/cmd_vel", Twist, self.update_message_from_chase
         )
-        
-        self.tilt_cmd = 0.0
-        self.tilt_chase = 0.0
+        rospy.loginfo("> Subscriber corrrectly initialized")
+
+        self.object_detect = 0.0
+        # free run command
         self.steer_cmd = 0.0
+        # steer from object cord
         self.steer_chase = 0.0
-        self._debud_command_msg = Twist()
+        self.steer_cmd_dir = 1.00
 
         # --- Get the last time e got a commands
         self._last_time_cmd_rcv = time.time()
@@ -104,51 +102,64 @@ class RobotArm:
 
         rospy.loginfo("Initialization complete")
 
-    #def update_message_from_command(self, message):
-    #    self._last_time_cmd_rcv = time.time()
-    #    self.tilt_cmd = message.linear.x
-    #    self.steer_cmd = message.angular.z
+    def __del__(self):
+        print("Arm class release")
+        self.motor5.run(mc.GRIPPER_OFF) 
+        self.motor4.run(mc.MOTOR4_OFF) 
+        self._steering.run(mc.MOTOR0_OFF)
+        self._steering.set_pwm_clear()
 
     def update_message_from_chase(self, message):
         self._last_time_chase_rcv = time.time()
-        self.tilt_chase = message.linear.x
+        self.object_detect = message.linear.x
         self.steer_chase = message.angular.z
-        #print(self.tilt_chase, self.steer_chase)
+        #print(self.object_detect, self.steer_chase)
 
     def compose_command_velocity(self):
-        self.tilt = mu.clamp(self.tilt_cmd + self.tilt_chase, -1, 1)
-        # -- Add steering
-        self.steer = mu.clamp(self.steer_cmd + self.steer_chase, -1, 1)
-        self.set_actuators_from_cmdvel(self.tilt, self.steer)
+        #steer_cmd: free run, steer_chase: from object detection 
+        if (self.object_detect == 1.00):
+            self.steer=self.steer_chase  
+        # if object is not detected, free run by adding steer_cmd
+        else:                                  
+            self.steer_cmd += mc.SCAN_SPEED*self.steer_cmd_dir
+            self.steer_cmd = mu.clamp(self.steer_cmd, -1.00, 1.00) 
+            self.steer=self.steer_cmd
+            if (self.steer_cmd == 1.00):
+                self.steer_cmd_dir = -1.00
+            elif (self.steer_cmd == -1.00):
+                self.steer_cmd_dir = 1.00     
 
-    def set_actuators_from_cmdvel(self, tilt, steering):
+        #rospy.loginfo("Got a command = %2.2f  dir = %2.2f"%(self.steer_cmd, self.steer_cmd_dir)) 
+        self.set_actuators_from_cmdvel(self.object_detect, self.steer)
+
+    def set_actuators_from_cmdvel(self, object_detect, steering):
         """
         Get a message from cmd_vel, assuming a maximum input of 1
         """
         # -- Convert vel into servo values
-        self.actuators["tilt"].get_value_out(tilt)
         self.actuators["steering"].get_value_out(steering)
-        if (tilt == 1.0):
-            rospy.loginfo("Got a command v = %.2f  s = %.2f"%(tilt, steering))
-            #print( "tilt: " + str(self.actuators["tilt"].value_out) +  ", steering: " + str(self.actuators["steering"].value_out))
-            if ((steering > -0.25) and (steering < 0.25)):
-                print("gripper close")
-                self.motor5.run(350)
-            else :
-                self.set_pwm_pulse(self.actuators["tilt"].value_out, self.actuators["steering"].value_out)
+        rospy.loginfo("Got a command det = %2.2f  steer = %2.2f"%(object_detect, steering))    
+
+        #check object is in range, then pick it up
+        if ((steering > mc.IN_RANGE_MIN) and (steering < mc.IN_RANGE_MAX) and (object_detect == 1.0)):
+            print("Object in front,pick it up")
+            self.motor5.runTarget(mc.GRIPPER_OPEN, mc.GRIPPER_CLOSE) 
+            self.motor5.runTarget(mc.GRIPPER_CLOSE, mc.GRIPPER_OPEN) 
+        #else free run or move to target
+        else :
+            self.set_pwm_pulse(self.actuators["steering"].value_out)
                 
-    def set_pwm_pulse(self, speed_pulse, steering_pulse):
-        self._tilt.run(speed_pulse)
+    def set_pwm_pulse(self, steering_pulse):
         self._steering.run(steering_pulse)
 
     def set_actuators_idle(self):
         # -- Convert vel into servo values
-        self.tilt_cmd = 0.0
-        self.steer_cmd = 0.0
+        self.object_detect = 0.0
+        #self.steer_cmd = 0.0
 
     def reset_avoid(self):
-        self.tilt_chase = 0.0
-        self.steer_avoid = 0.0
+        self.object_detect = 0.0
+        #self.steer_cmd = 0.0
 
     @property
     def is_controller_connected(self):
@@ -160,7 +171,6 @@ class RobotArm:
         return time.time() - self._last_time_chase_rcv < self._timeout_blob
 
     def run(self):
-
         # --- Set the control rate
         rate = rospy.Rate(10)
 
@@ -173,6 +183,7 @@ class RobotArm:
             if not self.is_chase_connected:
                 self.reset_avoid()
             rate.sleep()
+        self.__del__()
 
 if __name__ == "__main__":
     myArm = RobotArm()
