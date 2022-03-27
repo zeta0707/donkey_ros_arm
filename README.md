@@ -25,15 +25,15 @@ But, It's written in Korean. Anyway, Here's the link
 
 * Ubuntu 18.04
 * ROS Melodic
-* Opencv4
+* Opencv3.4.6
 
 ## Packages with Brief Explanation
 
 ```
-├── csi_camera => Handling Image data For IMX219 Camera  
+├── csi_camera => Handling Image data for USB camera 
 ├── donkey_control => Control RC Car with Adafruit PCA9685
-├── donkey_cv => Computer Vision Package with Opencv4 
-├── donkey_joy => Control RC Car with Logitech F710 Game Controller 
+├── donkey_cv => Computer Vision Package with Opencv3.4.6
+├── donkey_joy => Control RC Car with Gamepad 
 │
 (...)
 ├── Images
@@ -50,15 +50,11 @@ $ sudo apt-get install ros-melodic-cv-bridge
 $ sudo apt-get install ros-melodic-image-view
 ```
 
-2. OpenCV4 installation
-
-- Can be found in [JetsonHacks repo](https://github.com/JetsonHacksNano/buildOpenCV)
-
-3. Clone this Repo
+2. Clone this Repo
 
 ```bash
 $ cd ~/catkin_ws/src
-$ git clone https://github.com/Road-Balance/donkey_ros.git
+$ git clone https://github.com/zeta0707/donkey_ros_arm.git
 
 $ cd ../
 $ catkin_make
@@ -91,15 +87,6 @@ $ rosrun csi_camera webcam_pub.py
 $ rosrun image_view image_view image:=/csi_image
 ```
 
-### CSI Camera Publish
-
-```bash
-$ roscore
-
-$ rosrun csi_camera csi_pub.py
-$ rosrun image_view image_view image:=/csi_image
-```
-
 2. donkey_control package
 
 Packages for controlling `RC Car` with `PCA9685` PWM driver.
@@ -123,12 +110,10 @@ $ rosrun donkey_control blob_chase.py
 
 There's two modes for using joystick
 
-* Button mode
 * Axes mode
 
 ```bash
 $ roslaunch donkey_joy joy_teleop_axes.launch
-$ roslaunch donkey_joy joy_teleop_btns.launch
 ```
 
 4. donkey_cv package
@@ -162,8 +147,6 @@ $ rosrun donkey_control joy_control.py
 
 # Laptop or Jetson
 $ roslaunch donkey_joy joy_teleop_axes.launch
-# or
-$ roslaunch donkey_joy joy_teleop_btns.launch
 
 ```
 
