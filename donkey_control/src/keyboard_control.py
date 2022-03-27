@@ -87,44 +87,49 @@ class RobotArm(object):
         
         if msg.linear.x == 0.0:
             self.yaw_pulse -= int(msg.angular.z*3.0)
-        elif msg.angular.z == 0.0:
-            self.roll_pulse += int(msg.linear.x*3.0)
         else:
-            self.pitch_pulse += int(msg.linear.x*10.0)
+            temp_mul = msg.angular.z*msg.linear.x
+            #u, m key -> gripper rotate
+            if temp_mul == 0.5:
+                self.pitch_pulse += int(msg.linear.x*10.0)
+            #o . key -> motor2,3, mixed roll
+            elif temp_mul == -0.5:
+                self.roll_pulse -= int(msg.linear.x*3.0)
+            #i , key -> motor1
+            elif temp_mul == 0:
+                self.roll_pulse1 += int(msg.linear.x*3.0)
         self.gripper_pulse += int(msg.linear.z*10.0)
 
-        #rospy.loginfo("Received a /cmd_vel message!")
-        #rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
-        #rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
+        rospy.loginfo("Received a /cmd_vel message!")
+        rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
+        rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
 
         self.yaw_pulse = mu.clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
         self.pitch_pulse = mu.clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
         self.gripper_pulse = mu.clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
-        self.roll_pulse = mu.clamp(self.roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
+        self.roll_pulse1 = mu.clamp(self.roll_pulse1, mc.MOTOR1_MIN, mc.MOTOR1_MAX)
 
+        self.roll_pulse = mu.clamp(self.roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
         self.pulse_rem, self.roll_pulse3 = mu.clampRem(self.roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
         self.pulse_rem, self.roll_pulse2 = mu.clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
-        self.pulse_rem, self.roll_pulse1 = mu.clampRem(self.pulse_rem, mc.MOTOR1_DIF_MIN, mc.MOTOR1_DIF_MAX)
-
         self.roll_pulse3 += mc.MOTOR3_HOME
         self.roll_pulse2 += mc.MOTOR2_HOME
-        self.roll_pulse1 += mc.MOTOR1_HOME
 
         print(
             "motor0_pulse : "
             + str(self.yaw_pulse)
+            + " / "
+            + "motor2_pulse : "
+            + str(self.roll_pulse2)  
+            + " / "
+            + "motor3_pulse : "
+            + str(self.roll_pulse3)
             + " / "
             + "roll_pulse : "
             + str(self.roll_pulse)
             + " / "
             + "motor1_pulse : "
             + str(self.roll_pulse1)
-            + " / "
-            + "motor2_pulse : "
-            + str(self.roll_pulse2)  
-            + " / "
-            + "motor3_pulse : "
-            + str(self.roll_pulse3)        
         )
 
         self.motor0.run(self.yaw_pulse)       #control by joystick
