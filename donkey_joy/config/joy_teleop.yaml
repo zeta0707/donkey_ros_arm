@@ -23,7 +23,9 @@ teleop:
       -
         target: drive.acceleration
         value: 0.0
-
+      -
+        target: drive.steering_angle_velocity
+        value: 0.0
   # Enable Human control by holding Left Bumper
   human_control:
     type: topic
@@ -50,7 +52,12 @@ teleop:
         axis: 3
         target: drive.acceleration
         scale: 4096.0                  
-        offset: 0.0       
+        offset: 0.0     
+      -
+        axis: 7
+        target: drive.steering_angle_velocity
+        scale: 4096.0                  
+        offset: 0.0         
 
   # Enable autonomous control by pressing right bumper
   # This switch causes the joy_teleop to stop sending messages to input/teleop

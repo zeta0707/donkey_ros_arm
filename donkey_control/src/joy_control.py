@@ -84,38 +84,40 @@ class RobotArm(object):
 
         self.yaw_pulse += int((msg.drive.steering_angle)/1024)
         self.pitch_pulse += int((msg.drive.speed)/256)
-        self.gripper_pulse += int((msg.drive.acceleration)/256)
+        self.gripper_pulse += int((msg.drive.steering_angle_velocity)/256)
 
         self.yaw_pulse = mu.clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
         self.pitch_pulse = mu.clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
         self.gripper_pulse = mu.clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
 
-        self.roll_pulse += int((msg.drive.jerk)/1024)
+        self.roll_pulse1 += int((msg.drive.jerk)/1024)
+        self.roll_pulse1 = mu.clamp(self.roll_pulse1, mc.MOTOR1_MIN, mc.MOTOR1_MAX)
+
+        #motor2,3 are opposite direction to motor1
+        self.roll_pulse -= int((msg.drive.acceleration)/1024)
         self.roll_pulse = mu.clamp(self.roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
 
         self.pulse_rem, self.roll_pulse3 = mu.clampRem(self.roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
         self.pulse_rem, self.roll_pulse2 = mu.clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
-        self.pulse_rem, self.roll_pulse1 = mu.clampRem(self.pulse_rem, mc.MOTOR1_DIF_MIN, mc.MOTOR1_DIF_MAX)
 
         self.roll_pulse3 += mc.MOTOR3_HOME
         self.roll_pulse2 += mc.MOTOR2_HOME
-        self.roll_pulse1 += mc.MOTOR1_HOME
 
         print(
             "motor0_pulse : "
             + str(self.yaw_pulse)
+            + " / "
+            + "motor2_pulse : "
+            + str(self.roll_pulse2)  
+            + " / "
+            + "motor3_pulse : "
+            + str(self.roll_pulse3)
             + " / "
             + "roll_pulse : "
             + str(self.roll_pulse)
             + " / "
             + "motor1_pulse : "
             + str(self.roll_pulse1)
-            + " / "
-            + "motor2_pulse : "
-            + str(self.roll_pulse2)  
-            + " / "
-            + "motor3_pulse : "
-            + str(self.roll_pulse3)        
         )
 
         self.motor0.run(self.yaw_pulse)       #control by joystick
