@@ -148,6 +148,12 @@ $ rosrun donkey_control joy_control.py
 # Laptop or Jetson
 $ roslaunch donkey_joy joy_teleop_axes.launch
 
+
+왼쪽 레버 좌우: motor0 회전
+왼쪽 레버 상하: motor1 기울어짐
+오른쪽 레버 좌우: gripper 회전
+오른쪽 레버 상하: motor2,3 기울어짐
+왼쪽 조그셔틀 상하: Gripper open/close
 ```
 
 ### **2. keyboard_control**
@@ -168,6 +174,11 @@ $ rosrun teleop_twist_keyboard teleop_twist_keyboard.py
 $ roslaunch donkey_joy joy_teleop_axes.launch
 
 ```
+j l: 로봇암 좌우
+i , : motor0 기울어짐
+o . : motor2,3 기울어짐
+u m : gripper 회전
+t b: gripper 열림, 닫힘
 
 ### **3. blob_tracking**
 
@@ -208,13 +219,9 @@ Find the object of the Jetson Nano on the screen and change the direction of the
 
 ```bash
 #terminal #1
-# camera image publish
-zeta@zeta-nano:~/catkin_ws$ roslaunch jetson_csi_cam jetson_csi_cam.launch width:=416 height:=416 fps:=15
-
-#terminal #2
 #object detect using Yolo_v4
 zeta@zeta-nano:~/catkin_ws$ roslaunch darknet_ros yolo_v4.launch
 
-#terminal #3
+#terminal #2
 zeta@zeta-nano:~/catkin_ws$ roslaunch donkey_control yolo_chase.launch
 ```
