@@ -173,12 +173,12 @@ $ rosrun teleop_twist_keyboard teleop_twist_keyboard.py
 # Laptop or Jetson
 $ roslaunch donkey_joy joy_teleop_axes.launch
 
-```
 j l: 로봇암 좌우
 i , : motor0 기울어짐
 o . : motor2,3 기울어짐
 u m : gripper 회전
 t b: gripper 열림, 닫힘
+```
 
 ### **3. blob_tracking**
 
