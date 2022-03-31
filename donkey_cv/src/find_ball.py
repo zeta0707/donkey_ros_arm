@@ -153,7 +153,7 @@ def main(args):
 
     rospy.init_node('blob_detector', anonymous=True)
 
-    ic = BlobDetector(mc.boob_min, mc.blob_max, blur, params, detection_window)
+    ic = BlobDetector(mc.blob_min, mc.blob_max, blur, params, detection_window)
     try:
         rospy.spin()
     except KeyboardInterrupt:
