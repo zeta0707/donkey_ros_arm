@@ -19,7 +19,7 @@ from darknet_ros_msgs.msg import BoundingBoxes
 from rospy.topics import Message
 
 import myconfig as mc
-import myutil as mu
+from myutil import clamp
 
 class ChaseObject:
     def __init__(self):
@@ -72,7 +72,7 @@ class ChaseObject:
             #PI controller      
             #AVG(prev_steer_action)*Ki + steer_action*Kp
             final_steer_action = sum(self.prev_steer_action)/len(self.prev_steer_action)*mc.Ki + steer_action*mc.Kp
-            final_steer_action = mu.clamp(final_steer_action, -1.0, 1.0)
+            final_steer_action = clamp(final_steer_action, -1.0, 1.0)
             #shift left once, add last item
             self.prev_steer_action = self.prev_steer_action[1:] + self.prev_steer_action[:1]
             self.prev_steer_action[4] = steer_action
@@ -108,6 +108,6 @@ class ChaseObject:
             rate.sleep()
 
 if __name__ == "__main__":
-    rospy.init_node("chase_object_yolo")
+    rospy.init_node("chase_yolo")
     chase_ball = ChaseObject()
     chase_ball.run()

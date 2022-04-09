@@ -9,5 +9,5 @@
 
   <node pkg="donkey_joy" type="joy_teleop_axes.py" name="joy_teleop_axes" />
 
-  <node pkg="donkey_control" type="joy_control.py" name="joy_control" />
+  <node pkg="donkey_control" type="joy_control.py" name="joy_control" output="screen" />
 </launch>

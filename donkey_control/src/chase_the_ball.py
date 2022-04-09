@@ -18,7 +18,7 @@ from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Point
 
 import myconfig as mc
-import myutil as mu
+from myutil import clamp
 
 class ChaseBall:
     def __init__(self):
@@ -64,7 +64,7 @@ class ChaseBall:
             #PI controller      
             #AVG(prev_steer_action)*Ki + steer_action*Kp
             final_steer_action = sum(self.prev_steer_action)/len(self.prev_steer_action)*mc.Ki + steer_action*mc.Kp
-            final_steer_action = mu.clamp(final_steer_action, -1.0, 1.0)
+            final_steer_action = clamp(final_steer_action, -1.0, 1.0)
             #shift left once, add last item
             self.prev_steer_action = self.prev_steer_action[1:] + self.prev_steer_action[:1]
             self.prev_steer_action[4] = steer_action

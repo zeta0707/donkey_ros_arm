@@ -14,10 +14,10 @@ Listens to /dkcar/control/cmd_vel for corrective actions to the /cmd_vel coming 
 """
 import rospy
 from geometry_msgs.msg import Twist
-import time
+from time import time, sleep
 
 import myconfig as mc
-import myutil as mu
+from myutil import clamp, clampRem, PCA9685
 
 class ServoConvert:
     def __init__(self, id=1, center_value=mc.MOTOR0_HOME, range=mc.MOTOR0_RANGE, direction=1):
@@ -42,44 +42,35 @@ class RobotArm:
     def __init__(self):
         rospy.loginfo("Setting Up the Node...")
         # --- Initialize the node
-        rospy.init_node("blob_chase_node")
+        rospy.init_node("blob_control")
         
-        self._steering = mu.PCA9685(channel=0, address=0x40, busnum=1)
-        self.motor1 = mu.PCA9685(channel=1, address=0x40, busnum=1)
-        self.motor2 = mu.PCA9685(channel=2, address=0x40, busnum=1)
-        self.motor3 = mu.PCA9685(channel=3, address=0x40, busnum=1)
-        self.motor4 = mu.PCA9685(channel=14, address=0x40, busnum=1)
-        self.motor5 = mu.PCA9685(channel=15, address=0x40, busnum=1)
+        self.motor0 = PCA9685(channel=0, address=0x40, busnum=1)
+        self.motor1 = PCA9685(channel=1, address=0x40, busnum=1)
+        self.motor2 = PCA9685(channel=2, address=0x40, busnum=1)
+        self.motor3 = PCA9685(channel=3, address=0x40, busnum=1)
+        self.motor4 = PCA9685(channel=14, address=0x40, busnum=1)
+        self.motor5 = PCA9685(channel=15, address=0x40, busnum=1)
 
         rospy.loginfo("PCA9685 Awaked!!")
 
-        # start from off position
-        self.motor2.run(mc.MOTOR2_OFF)
-        self.motor3.run(mc.MOTOR3_OFF)       
-        self.motor4.run(mc.MOTOR4_OFF)  
-        self.motor1.run(mc.MOTOR1_OFF) 
-        self.motor5.run(mc.GRIPPER_OFF) 
-        self._steering.run(mc.MOTOR0_OFF)
+        self.armStatus = "Homing"
 
-        # move to home positon from off
+        # start from off position
+        self.goPosOff()
+
+        # move to home positon from off position
         self.motor1.runTarget(mc.MOTOR1_OFF, mc.MOTOR1_HOME)
         self.motor2.runTarget(mc.MOTOR2_OFF, mc.MOTOR2_HOME)
         self.motor3.runTarget(mc.MOTOR3_OFF, mc.MOTOR3_HOME)    
         self.motor4.runTarget(mc.MOTOR4_OFF, mc.MOTOR4_HOME)  
         self.motor5.runTarget(mc.GRIPPER_OFF, mc.GRIPPER_HOME) 
-        self._steering.runTarget(mc.MOTOR0_OFF, mc.MOTOR0_HOME)        
+        self.motor0.runTarget(mc.MOTOR0_OFF, mc.MOTOR0_HOME)        
 
         self.actuators = {}
         self.actuators["steering"] = ServoConvert(
             id=1, center_value=mc.MOTOR0_HOME, range=mc.MOTOR0_RANGE, direction=1
         )
         rospy.loginfo("> steering corrrectly initialized")
-
-        # --- Create the Subscriber to Twist commands
-        #self.ros_sub_twist = rospy.Subscriber(
-        #    "/cmd_vel", Twist, self.update_message_from_command
-        #)
-        #rospy.loginfo("> Subscriber corrrectly initialized")
 
         # --- Create the Subscriber to object following
         self.ros_sub_twist = rospy.Subscriber(
@@ -95,22 +86,51 @@ class RobotArm:
         self.steer_cmd_dir = 1.00
 
         # --- Get the last time e got a commands
-        self._last_time_cmd_rcv = time.time()
-        self._last_time_chase_rcv = time.time()
+        self._last_time_cmd_rcv = time()
+        self._last_time_chase_rcv = time()
         self._timeout_ctrl = 100
         self._timeout_blob = 1
+        self.armStatus = "Scanning"
 
         rospy.loginfo("Initialization complete")
 
     def __del__(self):
         print("Arm class release")
+        self.goPosOff()
+        sleep(1)
+        self.motor0.set_pwm_clear()
+
+    def goPosOff(self):
+        self.motor2.run(mc.MOTOR2_OFF)
+        self.motor3.run(mc.MOTOR3_OFF)       
+        self.motor4.run(mc.MOTOR4_OFF)  
+        self.motor1.run(mc.MOTOR1_OFF) 
         self.motor5.run(mc.GRIPPER_OFF) 
-        self.motor4.run(mc.MOTOR4_OFF) 
-        self._steering.run(mc.MOTOR0_OFF)
-        self._steering.set_pwm_clear()
+        self.motor0.run(mc.MOTOR0_OFF)
+
+    def pickup(self, xPos):
+        self.armStatus = "PickingUp"
+        self.motor3.run(mc.MOTOR3_PICKUP)
+        sleep(0.5)
+        self.motor5.run(mc.GRIPPER_CLOSE) 
+        sleep(0.5)
+        self.motor2.run(mc.MOTOR2_PICKUP)
+        sleep(0.5)
+        self.motor0.runTarget(xPos, mc.YAW_MIN) 
+        sleep(0.5)
+        self.motor1.runTarget(mc.MOTOR1_OFF, mc.MOTOR1_HOME)
+        sleep(0.5)
+        self.motor2.runTarget(mc.MOTOR2_PICKUP, mc.MOTOR2_HOME)
+        sleep(0.5)        
+        self.motor5.runTarget(mc.GRIPPER_CLOSE, mc.GRIPPER_OPEN)   
+        sleep(0.5)
+        self.motor0.runTarget(mc.YAW_MIN, mc.MOTOR0_HOME)
+        sleep(1) 
+        self.motor3.runTarget(mc.MOTOR3_PICKUP, mc.MOTOR3_HOME)    
+        sleep(0.5)
 
     def update_message_from_chase(self, message):
-        self._last_time_chase_rcv = time.time()
+        self._last_time_chase_rcv = time()
         self.object_detect = message.linear.x
         self.steer_chase = message.angular.z
         #print(self.object_detect, self.steer_chase)
@@ -122,7 +142,7 @@ class RobotArm:
         # if object is not detected, free run by adding steer_cmd
         else:                                  
             self.steer_cmd += mc.SCAN_SPEED*self.steer_cmd_dir
-            self.steer_cmd = mu.clamp(self.steer_cmd, -1.00, 1.00) 
+            self.steer_cmd = clamp(self.steer_cmd, -1.00, 1.00) 
             self.steer=self.steer_cmd
             if (self.steer_cmd == 1.00):
                 self.steer_cmd_dir = -1.00
@@ -139,18 +159,18 @@ class RobotArm:
         # -- Convert vel into servo values
         self.actuators["steering"].get_value_out(steering)
         rospy.loginfo("Got a command det = %2.2f  steer = %2.2f"%(object_detect, steering))    
-
         #check object is in range, then pick it up
-        if ((steering > mc.IN_RANGE_MIN) and (steering < mc.IN_RANGE_MAX) and (object_detect == 1.0)):
-            print("Object in front,pick it up")
-            self.motor5.runTarget(mc.GRIPPER_OPEN, mc.GRIPPER_CLOSE) 
-            self.motor5.runTarget(mc.GRIPPER_CLOSE, mc.GRIPPER_OPEN) 
-        #else free run or move to target
-        else :
-            self.set_pwm_pulse(self.actuators["steering"].value_out)
+        if self.armStatus == "Scanning":
+            if ((steering > mc.IN_RANGE_MIN) and (steering < mc.IN_RANGE_MAX) and (object_detect == 1.0)):
+                print("Object in front,pick it up")
+                self.pickup(self.actuators["steering"].get_value_out(steering))
+                self.armStatus = "Scanning"
+            #else free run or move to target
+            else :
+                self.set_pwm_pulse(self.actuators["steering"].value_out)
                 
     def set_pwm_pulse(self, steering_pulse):
-        self._steering.run(steering_pulse)
+        self.motor0.run(steering_pulse)
 
     def set_actuators_idle(self):
         # -- Convert vel into servo values
@@ -164,11 +184,11 @@ class RobotArm:
     @property
     def is_controller_connected(self):
         # print time.time() - self._last_time_cmd_rcv
-        return time.time() - self._last_time_cmd_rcv < self._timeout_ctrl
+        return time() - self._last_time_cmd_rcv < self._timeout_ctrl
 
     @property
     def is_chase_connected(self):
-        return time.time() - self._last_time_chase_rcv < self._timeout_blob
+        return time() - self._last_time_chase_rcv < self._timeout_blob
 
     def run(self):
         # --- Set the control rate

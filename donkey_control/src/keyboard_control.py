@@ -12,17 +12,17 @@ from threading import Thread
 from geometry_msgs.msg import Twist
 
 import myconfig as mc
-import myutil as mu
+from myutil import clamp, clampRem, PCA9685
 
 class RobotArm(object):
     def __init__(self, name="donkey_arm"):
         
-        self.motor0 = mu.PCA9685(channel=0, address=0x40, busnum=1)
-        self.motor1 = mu.PCA9685(channel=1, address=0x40, busnum=1)
-        self.motor2 = mu.PCA9685(channel=2, address=0x40, busnum=1)
-        self.motor3 = mu.PCA9685(channel=3, address=0x40, busnum=1)
-        self.motor4 = mu.PCA9685(channel=14, address=0x40, busnum=1)
-        self.motor5 = mu.PCA9685(channel=15, address=0x40, busnum=1)
+        self.motor0 = PCA9685(channel=0, address=0x40, busnum=1)
+        self.motor1 = PCA9685(channel=1, address=0x40, busnum=1)
+        self.motor2 = PCA9685(channel=2, address=0x40, busnum=1)
+        self.motor3 = PCA9685(channel=3, address=0x40, busnum=1)
+        self.motor4 = PCA9685(channel=14, address=0x40, busnum=1)
+        self.motor5 = PCA9685(channel=15, address=0x40, busnum=1)
         rospy.loginfo("PCA9685 Awaked!!")
 
         self._name = name
@@ -34,15 +34,10 @@ class RobotArm(object):
             buff_size=2 ** 24,
         )
         rospy.loginfo("Keyboard Subscriber Awaked!! Waiting for keyboard...")
-        self.done_home = 0
+        self.armStatus = "Homing"
 
         # start from off position
-        self.motor2.run(mc.MOTOR2_OFF)
-        self.motor3.run(mc.MOTOR3_OFF)       
-        self.motor4.run(mc.MOTOR4_OFF)  
-        self.motor1.run(mc.MOTOR1_OFF) 
-        self.motor5.run(mc.GRIPPER_OFF) 
-        self.motor0.run(mc.MOTOR0_OFF)
+        self.goPosOff()
 
         # move to home positon from off
         self.motor1.runTarget(mc.MOTOR1_OFF, mc.MOTOR1_HOME)
@@ -53,7 +48,7 @@ class RobotArm(object):
         self.motor0.runTarget(mc.MOTOR0_OFF, mc.MOTOR0_HOME)     
 
         self.pulse_rem = 0
-        self.done_home = 1
+        self.armStatus = "DoneHoming"
         self.fhandle = open("automove.txt", 'w')
 
         self.yaw_pulse = mc.MOTOR0_HOME
@@ -66,18 +61,25 @@ class RobotArm(object):
 
     def __del__(self):
         print("Arm class release")
-        self.motor5.run(mc.GRIPPER_OFF) 
-        self.motor4.run(mc.MOTOR4_OFF) 
-        self.motor0.run(mc.MOTOR0_OFF)
+        self.goPosOff()
+        sleep(1)        
         self.motor0.set_pwm_clear()
         self.fhandle.close
 
+    def goPosOff(self):
+        self.motor2.run(mc.MOTOR2_OFF)
+        self.motor3.run(mc.MOTOR3_OFF)       
+        self.motor4.run(mc.MOTOR4_OFF)  
+        self.motor1.run(mc.MOTOR1_OFF) 
+        self.motor5.run(mc.GRIPPER_OFF) 
+        self.motor0.run(mc.MOTOR0_OFF)
+
     def keyboard_callback(self, msg):
-        if  self.done_home == 0:
+        if  self.armStatus == "Homing":
             return
         else:
-            if self.done_home == 1:                
-                self.done_home = 2
+            if self.armStatus == "DoneHoming":                
+                self.armStatus = "OperatedBy"
                 self.prev_time = time()
 
         self.pulse_rem = 0
@@ -100,37 +102,38 @@ class RobotArm(object):
                 self.roll_pulse1 += int(msg.linear.x*3.0)
         self.gripper_pulse += int(msg.linear.z*10.0)
 
-        rospy.loginfo("Received a /cmd_vel message!")
-        rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
-        rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
+        #rospy.loginfo("Received a /cmd_vel message!")
+        #rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
+        #rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
 
-        self.yaw_pulse = mu.clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
-        self.pitch_pulse = mu.clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
-        self.gripper_pulse = mu.clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
-        self.roll_pulse1 = mu.clamp(self.roll_pulse1, mc.MOTOR1_MIN, mc.MOTOR1_MAX)
+        self.yaw_pulse = clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
+        self.pitch_pulse = clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
+        self.gripper_pulse = clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
+        self.roll_pulse1 = clamp(self.roll_pulse1, mc.MOTOR1_MIN, mc.MOTOR1_MAX)
 
-        self.roll_pulse = mu.clamp(self.roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
-        self.pulse_rem, self.roll_pulse3 = mu.clampRem(self.roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
-        self.pulse_rem, self.roll_pulse2 = mu.clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
+        self.roll_pulse = clamp(self.roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
+        self.pulse_rem, self.roll_pulse3 = clampRem(self.roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
+        self.pulse_rem, self.roll_pulse2 = clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
         self.roll_pulse3 += mc.MOTOR3_HOME
         self.roll_pulse2 += mc.MOTOR2_HOME
 
-        print(
-            "motor0_pulse : "
-            + str(self.yaw_pulse)
-            + " / "
-            + "motor2_pulse : "
-            + str(self.roll_pulse2)  
-            + " / "
-            + "motor3_pulse : "
-            + str(self.roll_pulse3)
-            + " / "
-            + "roll_pulse : "
-            + str(self.roll_pulse)
-            + " / "
-            + "motor1_pulse : "
-            + str(self.roll_pulse1)
-        )
+        if 1:
+            print(
+                "motor0_pulse : "
+                + str(self.yaw_pulse)
+                + " / "
+                + "motor2_pulse : "
+                + str(self.roll_pulse2)  
+                + " / "
+                + "motor3_pulse : "
+                + str(self.roll_pulse3)
+                + " / "
+                + "roll_pulse : "
+                + str(self.roll_pulse)
+                + " / "
+                + "motor1_pulse : "
+                + str(self.roll_pulse1)
+            )
 
         self.motor0.run(self.yaw_pulse)       #control by joystick
         self.motor1.run(self.roll_pulse1)     #control by joystick
@@ -141,13 +144,14 @@ class RobotArm(object):
         
         self.timediff = time() - self.prev_time
         self.prev_time = time()
+
         self.fhandle.write(str(self.yaw_pulse) + ':' + str(self.roll_pulse1) + ':' + str(self.roll_pulse2) 
         + ':' + str(self.roll_pulse3) + ':' + str(self.pitch_pulse) + ':' + str(self.gripper_pulse) + ':' + str(self.timediff) + '\n')
 
 if __name__ == "__main__":
 
-    rospy.init_node("donkey_control")
-    myArm = RobotArm("donkey_ros")
+    rospy.init_node("keyboard_control")
+    myArm = RobotArm("donkey_arm")
 
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():

@@ -64,14 +64,14 @@ class PCA9685:
 
     def runTarget(self, pulseSta, pulseTar):        
         if pulseTar > pulseSta:
-            step = 8
+            step = 4
         else:
-            step = -8
+            step = -4
         self.set_pwm(pulseSta) 
         for tempPulse in range(pulseSta, pulseTar, step):
             #print(tempPulse)
             self.set_pwm(tempPulse)              
-            time.sleep(0.05)
+            time.sleep(0.02)
         #print("Done")
 
     def set_pulse(self, pulse):

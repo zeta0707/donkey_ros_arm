@@ -16,6 +16,8 @@ image_pub = rospy.Publisher("webcam_image", Image, queue_size=1)
 
 bridge = CvBridge()
 
+rospy.loginfo("webcm publish starts...")
+
 while not rospy.is_shutdown():
     # Capture frame-by-frame
     ret, cv_image = cap.read()
@@ -25,7 +27,7 @@ while not rospy.is_shutdown():
     # cv2.waitKey(3)
     image_pub.publish(bridge.cv2_to_imgmsg(cv_image, "bgr8"))
 
-
+rospy.loginfo("webcm publish closing")
 # When everything done, release the capture
 cap.release()
 cv2.destroyAllWindows()

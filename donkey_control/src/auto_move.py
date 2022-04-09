@@ -42,8 +42,13 @@ while True:
     pwm.set_pwm(3, 0, int(motor3))
     pwm.set_pwm(14,0, int(motor4))
     pwm.set_pwm(15,0, int(motor5))
-    sleep(float(time_diff))
+    try:
+        sleep(float(time_diff))
+    except KeyboardInterrupt:
+       break
+    #print(str(motor0)+':'+str(motor1)+':'+str(motor2)+':'+str(motor3)+':'+str(motor4)+':'+str(motor5)+':'+str(time_diff))
 
+print("automove reached end")
 file1.close()
 pwm.set_pwm(0, 14, mc.MOTOR4_OFF)
 pwm.set_pwm(0, 15, mc.GRIPPER_OFF)
