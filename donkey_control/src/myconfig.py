@@ -56,17 +56,15 @@ GRIPPER_MAX = GRIPPER_CLOSE
 #yolo_chase or blob_chase
 PICTURE_SIZE_X = 640.0
 PICTURE_SIZE_Y = 480.0
+CALIBPICTURE = 0.00
 #please change this class for detection
 DETECT_CLASS = "GreenCylinder"
-#DETECT_CLASS = "cup"
 #steering sensitivity parameter
-K_LAT_DIST_TO_STEER = -0.5
-#PID controller for object following
-Ki = 0.8
+DIR_TO_STEER = -1.0
 Kp = 0.2
 
 MOTOR0_RANGE = (YAW_MAX -YAW_MIN)
-IN_RANGE_MIN = -0.10
-IN_RANGE_MAX = 0.10
+IN_RANGE_MIN = -0.03
+IN_RANGE_MAX = 0.03
 
 SCAN_SPEED = 0.05

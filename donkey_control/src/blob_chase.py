@@ -80,10 +80,12 @@ class RobotArm:
 
         self.object_detect = 0.0
         # free run command
-        self.steer_cmd = 0.0
+        self.steer = 0.0
         # steer from object cord
         self.steer_chase = 0.0
         self.steer_cmd_dir = 1.00
+        self.steer_prev = 0.0
+        self.steer_count = 0
 
         # --- Get the last time e got a commands
         self._last_time_cmd_rcv = time()
@@ -98,6 +100,11 @@ class RobotArm:
         print("Arm class release")
         self.goPosOff()
         sleep(1)
+        self.motor5.set_pwm_clear()
+        self.motor4.set_pwm_clear()
+        self.motor3.set_pwm_clear()
+        self.motor2.set_pwm_clear()
+        self.motor1.set_pwm_clear()
         self.motor0.set_pwm_clear()
 
     def goPosOff(self):
@@ -109,7 +116,6 @@ class RobotArm:
         self.motor0.run(mc.MOTOR0_OFF)
 
     def pickup(self, xPos):
-        self.armStatus = "PickingUp"
         self.motor3.run(mc.MOTOR3_PICKUP)
         sleep(0.5)
         self.motor5.run(mc.GRIPPER_CLOSE) 
@@ -137,37 +143,76 @@ class RobotArm:
 
     def compose_command_velocity(self):
         #steer_cmd: free run, steer_chase: from object detection 
+        #rospy.loginfo("Current steer = %2.2f  ChaseCmd = %2.2f"%(self.steer, self.steer_chase))
+
+        #if object is detected
         if (self.object_detect == 1.00):
-            self.steer=self.steer_chase  
+            self.set_actuators_from_cmdvel(self.object_detect, self.steer_chase)
         # if object is not detected, free run by adding steer_cmd
-        else:                                  
-            self.steer_cmd += mc.SCAN_SPEED*self.steer_cmd_dir
-            self.steer_cmd = clamp(self.steer_cmd, -1.00, 1.00) 
-            self.steer=self.steer_cmd
-            if (self.steer_cmd == 1.00):
-                self.steer_cmd_dir = -1.00
-            elif (self.steer_cmd == -1.00):
-                self.steer_cmd_dir = 1.00     
-
-        #rospy.loginfo("Got a command = %2.2f  dir = %2.2f"%(self.steer_cmd, self.steer_cmd_dir)) 
-        self.set_actuators_from_cmdvel(self.object_detect, self.steer)
-
+        else:        
+            if self.armStatus == "Scanning":
+                self.steer_chase = 0.0                          
+                self.steer += mc.SCAN_SPEED*self.steer_cmd_dir
+                self.steer = clamp(self.steer, -1.00, 1.00) 
+                if (self.steer == 1.00):
+                    self.steer_cmd_dir = -1.00
+                elif (self.steer == -1.00):
+                    self.steer_cmd_dir = 1.00     
+                self.set_actuators_from_cmdvel(self.object_detect, self.steer)
+            else:
+                print("wait next object found")
+        
     def set_actuators_from_cmdvel(self, object_detect, steering):
         """
         Get a message from cmd_vel, assuming a maximum input of 1
-        """
-        # -- Convert vel into servo values
-        self.actuators["steering"].get_value_out(steering)
-        rospy.loginfo("Got a command det = %2.2f  steer = %2.2f"%(object_detect, steering))    
+        """        
         #check object is in range, then pick it up
-        if self.armStatus == "Scanning":
-            if ((steering > mc.IN_RANGE_MIN) and (steering < mc.IN_RANGE_MAX) and (object_detect == 1.0)):
-                print("Object in front,pick it up")
-                self.pickup(self.actuators["steering"].get_value_out(steering))
-                self.armStatus = "Scanning"
-            #else free run or move to target
-            else :
-                self.set_pwm_pulse(self.actuators["steering"].value_out)
+        if self.armStatus == "PickingUp":
+            print("why here, PikingUp")
+            return
+
+        if object_detect == 1.0:     
+            self.armStatus = "Searching"  
+            self.steer_count += 1
+
+            #take time to move, 300ms
+            if self.steer_count < 3:
+                return
+            else:
+                self.steer_count = 0
+
+            #if( round(self.steer_prev,3) == round(steering,3) ) :
+            #    print("Still same picture")
+            #    return
+            #else :
+            self.steer_prev = steering  
+            self.steer += steering
+            self.steer = clamp(self.steer, -1.00, 1.00) 
+
+            # steering is chase cmmand
+            if (steering > mc.IN_RANGE_MIN) and (steering < mc.IN_RANGE_MAX):
+                steerPulse=int(self.actuators["steering"].get_value_out(self.steer))
+                self.set_pwm_pulse(steerPulse)
+                self.armStatus = "PickingUp"
+                print("Object is in range, pick from %d, chase: %2.2f"%(steerPulse, steering))
+                self.pickup(steerPulse)
+                #free scan since pickup is done, move from center clockwise
+                self.steer = 0
+                self.steer_cmd_dir = 1.00
+                self.armStatus = "Scanning"          
+
+            # -- Convert vel into servo values
+            steerPulse=int(self.actuators["steering"].get_value_out(self.steer))
+            self.set_pwm_pulse(steerPulse)
+            rospy.loginfo("Got a command det = %1.1f  steer = %1.2f pulse = %d"%(object_detect, steering, steerPulse) ) 
+        # free scan
+        else:
+            if self.armStatus == "Scanning":
+                steerPulse=int(self.actuators["steering"].get_value_out(self.steer))
+                self.set_pwm_pulse(steerPulse)               
+                rospy.loginfo("Got a command det = %1.1f  steer = %1.2f pulse = %d"%(object_detect, steering, steerPulse) )   
+            else:
+                print("why here, scanning")
                 
     def set_pwm_pulse(self, steering_pulse):
         self.motor0.run(steering_pulse)
@@ -175,11 +220,11 @@ class RobotArm:
     def set_actuators_idle(self):
         # -- Convert vel into servo values
         self.object_detect = 0.0
-        #self.steer_cmd = 0.0
+        #self.steer = 0.0
 
     def reset_avoid(self):
         self.object_detect = 0.0
-        #self.steer_cmd = 0.0
+        #self.steer = 0.0
 
     @property
     def is_controller_connected(self):

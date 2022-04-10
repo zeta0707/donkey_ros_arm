@@ -25,7 +25,6 @@ class ChaseBall:
 
         self.blob_x = 0.0
         self.blob_y = 0.0
-        self.prev_steer_action = [0.0, 0.0, 0.0, 0.0, 0.0]
         self._time_detected = 0.0
 
         self.sub_center = rospy.Subscriber("/blob/point_blob", Point, self.update_ball)
@@ -41,13 +40,13 @@ class ChaseBall:
 
     @property
     def is_detected(self):
-        return time.time() - self._time_detected < 1.0
+        return time.time() - self._time_detected < 0.2
 
     def update_ball(self, message):
         self.blob_x = message.x
         self.blob_y = message.y
         self._time_detected = time.time()
-        rospy.loginfo("Yolo X,Y(-1 ~ 1): %.2f  %.2f "%(self.blob_x, self.blob_y))
+        #rospy.loginfo("Yolo X,Y(-1 ~ 1): %.2f  %.2f "%(self.blob_x, self.blob_y))
 
     def get_control_action(self):
         """
@@ -58,25 +57,18 @@ class ChaseBall:
         final_steer_action = 0.0
 
         if self.is_detected:
-            # --- Apply steering, proportional to how close is the object
-            steer_action = mc.K_LAT_DIST_TO_STEER * self.blob_x
-            
-            #PI controller      
-            #AVG(prev_steer_action)*Ki + steer_action*Kp
-            final_steer_action = sum(self.prev_steer_action)/len(self.prev_steer_action)*mc.Ki + steer_action*mc.Kp
+            # --- Apply steering, proportional to how close is the object           
+            steer_action = mc.DIR_TO_STEER * self.blob_x            
+            final_steer_action =  steer_action*mc.Kp
             final_steer_action = clamp(final_steer_action, -1.0, 1.0)
-            #shift left once, add last item
-            self.prev_steer_action = self.prev_steer_action[1:] + self.prev_steer_action[:1]
-            self.prev_steer_action[4] = steer_action
 
             if ((steer_action > mc.IN_RANGE_MIN) and (steer_action < mc.IN_RANGE_MAX)) :
-                self.prev_steer_action = [0.0, 0.0, 0.0, 0.0, 0.0]
                 final_steer_action = 0
                 
             object_detect = 1.0
             #rospy.loginfo("isDetected, Steering = %2.2f, Current Steer = %2.2f" % (final_steer_action, steer_action))           
 
-        return (final_steer_action, object_detect)
+        return (object_detect, final_steer_action)
 
     def run(self):
 
@@ -85,7 +77,7 @@ class ChaseBall:
 
         while not rospy.is_shutdown():
             # -- Get the control action
-            steer_action, object_detect = self.get_control_action()
+            object_detect, steer_action = self.get_control_action()
             #rospy.loginfo("RUN, Steering = %3.1f Detected = %3.1f" % (steer_action, object_detect))
 
             # -- update the message
