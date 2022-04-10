@@ -47,14 +47,12 @@ class RobotArm(object):
         self.motor5.runTarget(mc.GRIPPER_OFF, mc.GRIPPER_HOME) 
         self.motor0.runTarget(mc.MOTOR0_OFF, mc.MOTOR0_HOME)     
 
-        self.pulse_rem = 0
         self.armStatus = "DoneHoming"
         self.fhandle = open("automove.txt", 'w')
 
         self.yaw_pulse = mc.MOTOR0_HOME
         self.pitch_pulse = mc.MOTOR4_HOME
         self.gripper_pulse = mc.GRIPPER_HOME 
-        self.roll_pulse = 0
         self.roll_pulse1 = mc.MOTOR1_HOME
         self.roll_pulse2 = mc.MOTOR2_HOME
         self.roll_pulse3 = mc.MOTOR3_HOME 
@@ -79,27 +77,26 @@ class RobotArm(object):
             return
         else:
             if self.armStatus == "DoneHoming":                
-                self.armStatus = "OperatedBy"
+                self.armStatus = "KeyboardControled"
                 self.prev_time = time()
-
-        self.pulse_rem = 0
 
         # Do velocity processing here:
         # Use the kinematics of your robot to map linear and angular velocities into motor commands
         
         if msg.linear.x == 0.0:
-            self.yaw_pulse -= int(msg.angular.z*3.0)
+            self.yaw_pulse -= int(msg.angular.z*5.0)
         else:
             temp_mul = msg.angular.z*msg.linear.x
-            #u, m key -> gripper rotate
+            #motor2,3 are opposite direction to motor1
+            #u, m key -> motor3
             if temp_mul == 0.5:
-                self.pitch_pulse += int(msg.linear.x*10.0)
-            #o . key -> motor2,3, mixed roll
+                self.roll_pulse3 -= int(msg.linear.x*5.0)
+            #o . key -> motor2
             elif temp_mul == -0.5:
-                self.roll_pulse -= int(msg.linear.x*3.0)
+                self.roll_pulse2 -= int(msg.linear.x*5.0)
             #i , key -> motor1
             elif temp_mul == 0:
-                self.roll_pulse1 += int(msg.linear.x*3.0)
+                self.roll_pulse1 += int(msg.linear.x*5.0)
         self.gripper_pulse += int(msg.linear.z*10.0)
 
         #rospy.loginfo("Received a /cmd_vel message!")
@@ -107,39 +104,31 @@ class RobotArm(object):
         #rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
 
         self.yaw_pulse = clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
-        self.pitch_pulse = clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
-        self.gripper_pulse = clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
         self.roll_pulse1 = clamp(self.roll_pulse1, mc.MOTOR1_MIN, mc.MOTOR1_MAX)
-
-        self.roll_pulse = clamp(self.roll_pulse, mc.ROLL_TOTAL_MIN, mc.ROLL_TOTAL_MAX)
-        self.pulse_rem, self.roll_pulse3 = clampRem(self.roll_pulse, mc.MOTOR3_DIF_MIN, mc.MOTOR3_DIF_MAX)
-        self.pulse_rem, self.roll_pulse2 = clampRem(self.pulse_rem, mc.MOTOR2_DIF_MIN, mc.MOTOR2_DIF_MAX)
-        self.roll_pulse3 += mc.MOTOR3_HOME
-        self.roll_pulse2 += mc.MOTOR2_HOME
+        self.roll_pulse2 = clamp(self.roll_pulse2, mc.MOTOR2_MIN, mc.MOTOR2_MAX)
+        self.roll_pulse3 = clamp(self.roll_pulse3, mc.MOTOR3_MIN, mc.MOTOR3_MAX)
+        self.gripper_pulse = clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
 
         if 1:
             print(
                 "motor0_pulse : "
                 + str(self.yaw_pulse)
                 + " / "
+                + "motor1_pulse : "
+                + str(self.roll_pulse1)
+                + " / "
                 + "motor2_pulse : "
                 + str(self.roll_pulse2)  
                 + " / "
                 + "motor3_pulse : "
                 + str(self.roll_pulse3)
-                + " / "
-                + "roll_pulse : "
-                + str(self.roll_pulse)
-                + " / "
-                + "motor1_pulse : "
-                + str(self.roll_pulse1)
             )
 
         self.motor0.run(self.yaw_pulse)       #control by joystick
         self.motor1.run(self.roll_pulse1)     #control by joystick
         self.motor2.run(self.roll_pulse2)     #control by joystick
         self.motor3.run(self.roll_pulse3)     #control by joystick
-        self.motor4.run(self.pitch_pulse)     #control by joystick
+        self.motor4.run(self.pitch_pulse)     #control by joystick, not used
         self.motor5.run(self.gripper_pulse)   #control by joystick
         
         self.timediff = time() - self.prev_time
