@@ -25,6 +25,8 @@ while not rospy.is_shutdown():
     # Display the resulting frame
     # cv2.imshow('frame',cv_image)
     # cv2.waitKey(3)
+    # resize for yolo tiny
+    # cv_image = cv2.resize(cv_image, dsize=(416, 416), interpolation=cv2.INTER_AREA)
     image_pub.publish(bridge.cv2_to_imgmsg(cv_image, "bgr8"))
 
 rospy.loginfo("webcm publish closing")
