@@ -38,7 +38,6 @@ from sensor_msgs.msg        import Image
 from geometry_msgs.msg      import Point
 from cv_bridge              import CvBridge, CvBridgeError
 from include.blob_detector  import *
-import myconfig as mc
 
 class BlobDetector:
 
@@ -153,7 +152,13 @@ def main(args):
 
     rospy.init_node('blob_detector', anonymous=True)
 
-    ic = BlobDetector(mc.blob_min, mc.blob_max, blur, params, detection_window)
+    blob_min = rospy.get_param("/blob_detector/blob_min")
+    blob_max = rospy.get_param("/blob_detector/blob_max")
+
+    print("blob min", blob_min)
+    print("blob max", blob_max)
+
+    ic = BlobDetector(tuple(blob_min), tuple(blob_max), blur, params, detection_window)
     try:
         rospy.spin()
     except KeyboardInterrupt:

@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="donkey_control" type="auto_move.py" name="auto_move" output="screen" />
+</launch>

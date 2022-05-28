@@ -4,7 +4,8 @@ MOTOR0_HOME = 380
 MOTOR0_OFF = MOTOR0_HOME
 YAW_MIN = 270
 YAW_MAX = 490
-MOTOR0_PICKUP = YAW_MIN
+MOTOR0_PICKUP1 = YAW_MIN
+MOTOR0_PICKUP2 = YAW_MAX
 
 #forward or backward
 #roll, 2 DOF
@@ -59,13 +60,11 @@ PICTURE_SIZE_X = 640.0
 PICTURE_SIZE_Y = 480.0
 CALIBPICTURE = 0.00
 #please change this class for detection
-DETECT_CLASS = "GreenCylinder"
+
 #steering sensitivity parameter
 DIR_TO_STEER = -1.0
 Kp = 0.2
 
 MOTOR0_RANGE = (YAW_MAX -YAW_MIN)
-IN_RANGE_MIN = -0.03
-IN_RANGE_MAX = 0.03
-
-SCAN_SPEED = 0.05
+IN_RANGE_MIN = -0.02
+IN_RANGE_MAX = 0.02

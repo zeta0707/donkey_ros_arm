@@ -78,7 +78,7 @@ class RobotArm:
         )
         rospy.loginfo("> Subscriber corrrectly initialized")
 
-        self.object_detect = 0.0
+        self.object_detect = 0
         # free run command
         self.steer = 0.0
         # steer from object cord
@@ -93,6 +93,8 @@ class RobotArm:
         self._timeout_ctrl = 100
         self._timeout_blob = 1
         self.armStatus = "Scanning"
+        
+        self.scan_speed = rospy.get_param("/jessiarm_speed/SCAN_SPEED")
 
         rospy.loginfo("Initialization complete")
 
@@ -110,7 +112,7 @@ class RobotArm:
         self.motor5.run(mc.GRIPPER_OFF) 
         self.motor0.run(mc.MOTOR0_OFF)
 
-    def pickup(self, xPos):
+    def pickup(self, xPos, object):
         self.motor1.run(mc.MOTOR1_PICKUP)
         sleep(0.5)       
         self.motor3.run(mc.MOTOR3_PICKUP)
@@ -119,18 +121,29 @@ class RobotArm:
         sleep(0.5)
         self.motor2.run(mc.MOTOR2_PICKUP)
         sleep(0.5)
-        self.motor0.runTarget(xPos, mc.MOTOR0_PICKUP) 
+
+        if object == 1:
+            self.motor0.runTarget(xPos, mc.MOTOR0_PICKUP1) 
+        else:
+            self.motor0.runTarget(xPos, mc.MOTOR0_PICKUP2)
+
         sleep(0.5)
         self.motor2.runTarget(mc.MOTOR2_PICKUP, mc.MOTOR2_HOME)
         sleep(0.5)        
         self.motor5.runTarget(mc.GRIPPER_CLOSE, mc.GRIPPER_OPEN)   
         sleep(0.5)
-        self.motor1.runTarget(mc.MOTOR1_PICKUP, mc.MOTOR1_HOME)
-        sleep(0.5)       
-        self.motor0.runTarget(mc.MOTOR0_PICKUP, mc.MOTOR0_HOME)
+        self.motor1.runTarget(mc.MOTOR1_PICKUP, mc.MOTOR1_HOME + 20)
+        sleep(0.5)  
+
+        if object == 1:
+            self.motor0.runTarget(mc.MOTOR0_PICKUP1, mc.MOTOR0_HOME)
+        else:
+            self.motor0.runTarget(mc.MOTOR0_PICKUP2, mc.MOTOR0_HOME)
         sleep(1) 
+
         self.motor3.runTarget(mc.MOTOR3_PICKUP, mc.MOTOR3_HOME)    
         sleep(0.5)
+        self.motor1.runTarget(mc.MOTOR1_HOME + 20, mc.MOTOR1_HOME)
 
     def update_message_from_chase(self, message):
         self._last_time_chase_rcv = time()
@@ -143,13 +156,13 @@ class RobotArm:
         #rospy.loginfo("Current steer = %2.2f  ChaseCmd = %2.2f"%(self.steer, self.steer_chase))
 
         #if object is detected
-        if (self.object_detect == 1.00):
+        if (self.object_detect > 0):
             self.set_actuators_from_cmdvel(self.object_detect, self.steer_chase)
         # if object is not detected, free run by adding steer_cmd
         else:        
             if self.armStatus == "Scanning":
                 self.steer_chase = 0.0                          
-                self.steer += mc.SCAN_SPEED*self.steer_cmd_dir
+                self.steer += self.scan_speed*self.steer_cmd_dir
                 self.steer = clamp(self.steer, -1.00, 1.00) 
                 if (self.steer == 1.00):
                     self.steer_cmd_dir = -1.00
@@ -168,7 +181,7 @@ class RobotArm:
             print("why here, PikingUp")
             return
 
-        if object_detect == 1.0:     
+        if object_detect > 0:     
             self.armStatus = "Searching"  
             self.steer_count += 1
 
@@ -192,7 +205,7 @@ class RobotArm:
                 self.set_pwm_pulse(steerPulse)
                 self.armStatus = "PickingUp"
                 print("Object is in range, pick from %d, chase: %2.2f"%(steerPulse, steering))
-                self.pickup(steerPulse)
+                self.pickup(steerPulse, object_detect)
                 #free scan since pickup is done, move from center clockwise
                 self.steer = 0
                 self.steer_cmd_dir = 1.00
@@ -216,11 +229,11 @@ class RobotArm:
 
     def set_actuators_idle(self):
         # -- Convert vel into servo values
-        self.object_detect = 0.0
+        self.object_detect = 0
         #self.steer = 0.0
 
     def reset_avoid(self):
-        self.object_detect = 0.0
+        self.object_detect = 0
         #self.steer = 0.0
 
     @property

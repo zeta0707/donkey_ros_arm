@@ -1,4 +1,8 @@
 <launch>
+  <arg name="find_yolo_config"
+       default="$(find donkey_control)/config/yolo_jessiarm.yaml" />
+  <rosparam command="load" file="$(arg find_yolo_config)" />
+
   <node pkg="csi_camera" type="webcam_pub.py" name="webcam_pub" />
   <node pkg="donkey_control" type="chase_object_yolo.py" name="chase_object" output="screen"/>
   <node pkg="donkey_control" type="blob_chase.py" name="blob_chase" output="screen" />

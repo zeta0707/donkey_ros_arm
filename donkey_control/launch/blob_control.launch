@@ -1,6 +1,10 @@
 <launch>
+  <arg name="find_ball_config"
+       default="$(find donkey_control)/config/find_ball.yaml" />
+  <rosparam command="load" file="$(arg find_ball_config)" />
+
   <node pkg="csi_camera" type="webcam_pub.py" name="webcam_pub" />
-  <node pkg="donkey_cv" type="find_ball.py" name="blob_detector" />
+  <node pkg="donkey_cv" type="find_ball.py" name="blob_detector" output="screen" />
   <node pkg="donkey_control" type="chase_the_ball.py" name="chase_ball" output="screen" />
   <node pkg="donkey_control" type="blob_chase.py" name="blob_chase" output="screen" />
   <!-- 

@@ -38,23 +38,31 @@ class ChaseObject:
         self._message = Twist()
         self._time_steer = 0
 
+        self.yolo_target1 = rospy.get_param("/jessiarm_target/DETECT_CLASS1")
+        self.yolo_target2 = rospy.get_param("/jessiarm_target/DETECT_CLASS2")
+        self.yolo_target = 0
+
     @property
     def is_detected(self):
         return time() - self._time_detected < 0.2
 
     def update_object(self, message):
         for box in message.bounding_boxes:
-            #
             #yolov4-tiny, 416x416
-            if box.Class == mc.DETECT_CLASS:
-                self.blob_x = float((box.xmax + box.xmin)/mc.PICTURE_SIZE_X/2.0) - 0.5 -mc.CALIBPICTURE
-                self.blob_y = float((box.ymax + box.ymin)/mc.PICTURE_SIZE_Y/2.0) - 0.5
+            if (box.Class == self.yolo_target1) or (box.Class == self.yolo_target2):
+                self.blob_x = float((box.xmax + box.xmin)/mc.PICTURE_SIZE_X/2.0) - 0.5 - mc.CALIBPICTURE
+                #self.blob_y = float((box.ymax + box.ymin)/mc.PICTURE_SIZE_Y/2.0) - 0.5
                 self._time_detected = time()
                 rospy.loginfo("Yolo X,Y(-1 ~ 1): %.2f  %.2f "%(self.blob_x, self.blob_y))
+                if box.Class == self.yolo_target1:
+                    self.yolo_target = 1
+                else:
+                    self.yolo_target = 2
                 #rospy.loginfo(
                 #    "Xmin: {}, Xmax: {} Ymin: {}, Ymax: {} Class: {}".format
                 #    (box.xmin, box.xmax, box.ymin, box.ymax, box.Class) )
             else:
+                self.yolo_target = 0
                 rospy.loginfo("Yolo different object")
             
     def get_control_action(self):
@@ -74,7 +82,7 @@ class ChaseObject:
             if ((steer_action > mc.IN_RANGE_MIN) and (steer_action < mc.IN_RANGE_MAX)) :
                 final_steer_action = 0
                 
-            object_detect = 1.0
+            object_detect = self.yolo_target
             #rospy.loginfo("isDetected, Steering = %2.2f, Current Steer = %2.2f" % (final_steer_action, steer_action))           
 
         return (object_detect, final_steer_action)

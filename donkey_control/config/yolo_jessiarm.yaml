@@ -1,0 +1,6 @@
+jessiarm_target:
+  DETECT_CLASS1 : "RedStar"
+  DETECT_CLASS2 : "BlueCylinder"
+
+jessiarm_speed:
+  SCAN_SPEED: 0.04
