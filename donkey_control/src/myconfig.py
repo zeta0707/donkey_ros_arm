@@ -1,3 +1,6 @@
+#servo motor full pulse
+MIN_PULSE_WIDTH = 220
+MAX_PULSE_WIDTH = 540
 #turn left or right of base
 MOTOR0_ZERO = 380
 MOTOR0_HOME = 380

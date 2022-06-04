@@ -18,6 +18,21 @@ def clampRem(n, minn, maxn):
     else:
         return 0, n
 
+# Convert radians to degreees
+def radiansToDegrees(position_radians):
+    position_radians = position_radians * 57.2958
+    return position_radians
+
+# Sometimes servo angle goes just above 180 or just below 0 - trim to 0 or 180
+def trimLimits(mtr_pos):
+    if(mtr_pos > 180):
+      mtr_pos = 180
+
+    if(mtr_pos < 0):
+      mtr_pos = 0
+
+    return mtr_pos
+
 class PCA9685:
     """
     PWM motor controler using PCA9685 boards.

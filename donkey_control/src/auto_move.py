@@ -2,6 +2,7 @@
 from time import sleep, time
 import myconfig as mc
 import myutil as mu
+import sys
 
 # Import the PCA9685 module.
 import Adafruit_PCA9685
@@ -28,6 +29,8 @@ pwm.set_pwm(0, 14, mc.MOTOR4_HOME)
 pwm.set_pwm(0, 15, mc.GRIPPER_HOME)
 pwm.set_pwm(0, 0,  mc.MOTOR0_HOME) 
 
+print("automove starts")
+
 while True:
     # Get next line from file
     line = moveHistory.readline()
@@ -46,7 +49,10 @@ while True:
         sleep(float(time_diff))
     except KeyboardInterrupt:
        break
-    print(str(motor0)+':'+str(motor1)+':'+str(motor2)+':'+str(motor3)+':'+str(motor4)+':'+str(motor5)+':'+str(time_diff))
+
+    #sys.stdout.write(".")
+    sys.stdout.write(str(motor0)+':'+str(motor1)+':'+str(motor2)+':'+str(motor3)+':'+str(motor4)+':'+str(motor5)+':'+str(time_diff))
+    sys.stdout.flush()
 
 print("automove reached end")
 moveHistory.close()
