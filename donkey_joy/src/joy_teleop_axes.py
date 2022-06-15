@@ -249,10 +249,7 @@ class JoyTeleop:
                     )
                     val = 0.0
                 else:
-                    if mapping.get("axis", 0.0) == 0:
-                        val = -joy_state.axes[mapping["axis"]] * mapping.get("scale", 1.0) + mapping.get("offset", 0.0)    
-                    else:
-                         val = joy_state.axes[mapping["axis"]] * mapping.get("scale", 1.0) + mapping.get("offset", 0.0)
+                    val = joy_state.axes[mapping["axis"]] * mapping.get("scale", 1.0) + mapping.get("offset", 0.0)
                     #rospy.logerr("axes:%d, map:%d, val:%d", mapping.get("axis", 0.0), mapping.get( "scale", 1.0), val)
 
                 self.set_member(msg, mapping["target"], val)

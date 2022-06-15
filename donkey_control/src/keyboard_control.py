@@ -85,6 +85,9 @@ class RobotArm(object):
         
         if msg.linear.x == 0.0:
             self.yaw_pulse -= int(msg.angular.z*5.0)
+        elif msg.linear.y == 0.5:
+        #U,M key
+            self.pitch_pulse += int(msg.linear.x*5.0)
         else:
             temp_mul = msg.angular.z*msg.linear.x
             #motor2,3 are opposite direction to motor1
@@ -107,6 +110,7 @@ class RobotArm(object):
         self.roll_pulse1 = clamp(self.roll_pulse1, mc.MOTOR1_MIN, mc.MOTOR1_MAX)
         self.roll_pulse2 = clamp(self.roll_pulse2, mc.MOTOR2_MIN, mc.MOTOR2_MAX)
         self.roll_pulse3 = clamp(self.roll_pulse3, mc.MOTOR3_MIN, mc.MOTOR3_MAX)
+        self.pitch_pulse = clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
         self.gripper_pulse = clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
 
         if 1:
@@ -122,13 +126,19 @@ class RobotArm(object):
                 + " / "
                 + "motor3_pulse : "
                 + str(self.roll_pulse3)
+                + " / "
+                + "motor4_pulse : "
+                + str(self.pitch_pulse)                
+                + " / "
+                + "motor5_pulse : "
+                + str(self.gripper_pulse) 
             )
 
         self.motor0.run(self.yaw_pulse)       #control by joystick
         self.motor1.run(self.roll_pulse1)     #control by joystick
         self.motor2.run(self.roll_pulse2)     #control by joystick
         self.motor3.run(self.roll_pulse3)     #control by joystick
-        self.motor4.run(self.pitch_pulse)     #control by joystick, not used
+        self.motor4.run(self.pitch_pulse)     #control by joystick
         self.motor5.run(self.gripper_pulse)   #control by joystick
         
         self.timediff = time() - self.prev_time

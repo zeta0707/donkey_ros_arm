@@ -8,54 +8,62 @@ teleop:
   default:
     type: topic
     is_default: true
-    message_type: ackermann_msgs/AckermannDriveStamped
+    message_type: geometry_msgs/Twist
     topic_name: donkey_teleop
     message_value:
       -
-        target: drive.steering_angle
+        target: linear.x
         value: 0.0
       -
-        target: drive.jerk
+        target: angular.x
         value: 0.0
       -
-        target: drive.speed
+        target: angular.y
         value: 0.0
       -
-        target: drive.acceleration
+        target: angular.z
         value: 0.0
       -
-        target: drive.steering_angle_velocity
+        target: linear.y
         value: 0.0
+      -
+        target: linear.z
+        value: 0.0       
   # Enable Human control by holding Left Bumper
   human_control:
     type: topic
-    message_type: ackermann_msgs/AckermannDriveStamped
+    message_type: geometry_msgs/Twist
     topic_name: donkey_teleop
     deadman_buttons: [6]
     axis_mappings:
       -
         axis: 0
-        target: drive.steering_angle
+        target: linear.x
         scale: 4096.0                
         offset: 0.0
       -
         axis: 1
-        target: drive.jerk
+        target: angular.x
         scale: 4096.0                  
         offset: 0.0
       -
         axis: 2
-        target: drive.speed
+        target: angular.y
         scale: 4096.0                  
         offset: 0.0
       -
         axis: 3
-        target: drive.acceleration
+        target: angular.z
         scale: 4096.0                  
-        offset: 0.0     
+        offset: 0.0    
+      -
+        axis: 6
+        target: linear.y
+        scale: 4096.0                  
+        offset: 0.0         
       -
         axis: 7
-        target: drive.steering_angle_velocity
+        target: linear.z
         scale: 4096.0                  
         offset: 0.0         
 

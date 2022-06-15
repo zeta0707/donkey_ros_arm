@@ -9,7 +9,7 @@ url : https://github.com/autorope/donkeycar/blob/dev/donkeycar/parts/actuator.py
 from time import time, sleep
 import rospy
 from threading import Thread
-from ackermann_msgs.msg import AckermannDriveStamped
+from geometry_msgs.msg import Twist
 
 import myconfig as mc
 from myutil import clamp, clampRem, PCA9685
@@ -28,7 +28,7 @@ class RobotArm(object):
         self._name = name
         self._teleop_sub = rospy.Subscriber(
             "/donkey_teleop",
-            AckermannDriveStamped,
+            Twist,
             self.joy_callback,
             queue_size=1,
             buff_size=2 ** 24,
@@ -80,17 +80,22 @@ class RobotArm(object):
                 self.armStatus = "JoyControled"
                 self.prev_time = time()
 
-        self.yaw_pulse += int((msg.drive.steering_angle)/1024)
-        self.roll_pulse1 += int((msg.drive.jerk)/1024)
-        #motor2,3 are opposite direction to motor1
-        self.roll_pulse2 -= int((msg.drive.acceleration)/1024)
-        self.roll_pulse3 -= int((msg.drive.steering_angle_velocity)/1024)
-        self.gripper_pulse += int((msg.drive.speed)/512)       
+        self.yaw_pulse -= int(msg.linear.x/1024.0)
+        self.roll_pulse1 += int(msg.angular.x/1024.0)
+        self.roll_pulse2 -= int(msg.angular.y/1024.0)
+        self.roll_pulse3 += int(msg.angular.z/1024.0)
+        self.pitch_pulse -= int(msg.linear.y/512.0)
+        self.gripper_pulse += int(msg.linear.z/512.0)
+
+        #rospy.loginfo("Received a /cmd_vel message!")
+        #rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
+        #rospy.loginfo("Angular Components: [%f, %f, %f]"%(msg.angular.x, msg.angular.y, msg.angular.z))
 
         self.yaw_pulse = clamp(self.yaw_pulse, mc.YAW_MIN,mc.YAW_MAX)
         self.roll_pulse1 = clamp(self.roll_pulse1, mc.MOTOR1_MIN, mc.MOTOR1_MAX)
         self.roll_pulse2 = clamp(self.roll_pulse2, mc.MOTOR2_MIN, mc.MOTOR2_MAX)
         self.roll_pulse3 = clamp(self.roll_pulse3, mc.MOTOR3_MIN, mc.MOTOR3_MAX)
+        self.pitch_pulse = clamp(self.pitch_pulse, mc.PITCH_MIN, mc.PITCH_MAX)
         self.gripper_pulse = clamp(self.gripper_pulse, mc.GRIPPER_MIN, mc.GRIPPER_MAX)
 
         if 1:
@@ -106,13 +111,19 @@ class RobotArm(object):
                 + " / "
                 + "motor3_pulse : "
                 + str(self.roll_pulse3)
+                + " / "
+                + "motor4_pulse : "
+                + str(self.pitch_pulse)                
+                + " / "
+                + "motor5_pulse : "
+                + str(self.gripper_pulse) 
             )
 
         self.motor0.run(self.yaw_pulse)       #control by joystick
         self.motor1.run(self.roll_pulse1)     #control by joystick
         self.motor2.run(self.roll_pulse2)     #control by joystick
         self.motor3.run(self.roll_pulse3)     #control by joystick
-        self.motor4.run(self.pitch_pulse)     #control by joystick, not used
+        self.motor4.run(self.pitch_pulse)     #control by joystick
         self.motor5.run(self.gripper_pulse)   #control by joystick
         
         self.timediff = time() - self.prev_time
