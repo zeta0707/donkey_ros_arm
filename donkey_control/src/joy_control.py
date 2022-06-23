@@ -82,10 +82,10 @@ class RobotArm(object):
 
         self.yaw_pulse -= int(msg.linear.x/1024.0)
         self.roll_pulse1 += int(msg.angular.x/1024.0)
-        self.roll_pulse2 -= int(msg.angular.y/1024.0)
-        self.roll_pulse3 += int(msg.angular.z/1024.0)
-        self.pitch_pulse -= int(msg.linear.y/512.0)
-        self.gripper_pulse += int(msg.linear.z/512.0)
+        self.roll_pulse2 += int(msg.angular.y/1024.0)
+        self.roll_pulse3 -= int(msg.angular.z/1024.0)
+        self.pitch_pulse += int(msg.linear.y/512.0)
+        self.gripper_pulse -= int(msg.linear.z/512.0)
 
         #rospy.loginfo("Received a /cmd_vel message!")
         #rospy.loginfo("Linear Components: [%f, %f, %f]"%(msg.linear.x, msg.linear.y, msg.linear.z))
